@@ -1,1 +1,1 @@
-web: python completeaza_contract.py
+web: python main.py

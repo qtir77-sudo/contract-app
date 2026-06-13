@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NHS GP Letter Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;600;700&family=Fira+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --nhs-blue: #005EB8;
+    --nhs-dark: #003087;
+    --nhs-green: #009639;
+    --nhs-warm-yellow: #FFB81C;
+    --nhs-light: #E8EDEE;
+    --nhs-white: #FFFFFF;
+    --text-dark: #1a1a2e;
+    --text-mid: #4a5568;
+    --radius: 4px;
+    --shadow: 0 2px 12px rgba(0,94,184,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Fira Sans', sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    color: var(--text-dark);
+  }
+
+  /* Top bar */
+  .topbar {
+    background: var(--nhs-blue);
+    padding: 0;
+    display: flex;
+    align-items: stretch;
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 24px;
+  }
+  .nhs-logo {
+    background: var(--nhs-white);
+    color: var(--nhs-blue);
+    font-family: 'Fira Mono', monospace;
+    font-weight: 700;
+    font-size: 22px;
+    padding: 4px 10px;
+    letter-spacing: -1px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .topbar-title {
+    color: var(--nhs-white);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .topbar-version {
+    margin-left: auto;
+    background: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.85);
+    font-family: 'Fira Mono', monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  /* Layout */
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px 60px;
+  }
+
+  /* Section cards */
+  .card {
+    background: var(--nhs-white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+    border-left: 4px solid var(--nhs-blue);
+  }
+  .card-header {
+    background: var(--nhs-blue);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-header h2 {
+    color: var(--nhs-white);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .card-icon {
+    width: 22px;
+    height: 22px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+  .card-body {
+    padding: 20px 24px;
+  }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .col-span-2 { grid-column: span 2; }
+
+  /* Fields */
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  input {
+    height: 40px;
+    border: 1.5px solid #d0d9e2;
+    border-radius: var(--radius);
+    padding: 0 12px;
+    font-family: 'Fira Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text-dark);
+    background: #fafcff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  input:focus {
+    border-color: var(--nhs-blue);
+    box-shadow: 0 0 0 3px rgba(0,94,184,0.15);
+    background: #fff;
+  }
+  input::placeholder { color: #b0bec5; font-style: italic; }
+
+  /* Action bar */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 28px;
+  }
+
+  .btn-generate {
+    background: var(--nhs-blue);
+    color: white;
+    border: none;
+    height: 48px;
+    padding: 0 36px;
+    border-radius: var(--radius);
+    font-family: 'Fira Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.02em;
+  }
+  .btn-generate:hover { background: var(--nhs-dark); }
+  .btn-generate:active { transform: scale(0.98); }
+  .btn-generate:disabled { background: #90aac8; cursor: not-allowed; }
+
+  .btn-reset {
+    background: transparent;
+    color: var(--text-mid);
+    border: 1.5px solid #d0d9e2;
+    height: 48px;
+    padding: 0 20px;
+    border-radius: var(--radius);
+    font-family: 'Fira Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-reset:hover { border-color: var(--nhs-blue); color: var(--nhs-blue); }
+
+  /* Status */
+  .status {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 16px;
+  }
+  .status.loading {
+    display: flex;
+    background: #e8f0fb;
+    color: var(--nhs-blue);
+    border: 1px solid #c2d5ef;
+  }
+  .status.success {
+    display: flex;
+    background: #e6f9ec;
+    color: #1a7a3c;
+    border: 1px solid #a8ddb8;
+  }
+  .status.error {
+    display: flex;
+    background: #fdecea;
+    color: #c0392b;
+    border: 1px solid #f5c6c2;
+  }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(0,94,184,0.25);
+    border-top-color: var(--nhs-blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Info note */
+  .note {
+    background: #fffbea;
+    border-left: 4px solid var(--nhs-warm-yellow);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #6b5a00;
+    margin-bottom: 20px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  @media (max-width: 600px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .col-span-2 { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="nhs-logo">NHS</div>
+    <div class="topbar-title">GP Registration Letter Generator</div>
+    <div class="topbar-version">v1.0</div>
+  </div>
+</div>
+
+<div class="page">
+
+  <div class="note">
+    ℹ️ Completează câmpurile de mai jos și apasă <strong>Generate PDF</strong>. Barcodeul existent din document va fi păstrat automat.
+  </div>
+
+  <!-- Patient details -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">👤</div>
+      <h2>Patient Details</h2>
+    </div>
+    <div class="card-body">
+      <div class="grid-2" style="gap:16px">
+        <div class="field col-span-2">
+          <label>Full Name</label>
+          <input id="patient_name" placeholder="e.g. Mr John Smith" />
+        </div>
+        <div class="field">
+          <label>Address Line 1 (Street)</label>
+          <input id="patient_addr1" placeholder="e.g. 16 Wood St" />
+        </div>
+        <div class="field">
+          <label>Address Line 2 (Town)</label>
+          <input id="patient_addr2" placeholder="e.g. Bargoed" />
+        </div>
+        <div class="field">
+          <label>Postcode</label>
+          <input id="patient_addr3" placeholder="e.g. CF81 8NW" />
+        </div>
+        <div class="field">
+          <label>NHS Number</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="nhs_no" placeholder="e.g. 984 409 3834" style="flex:1;" />
+            <button type="button" onclick="generateNHS()" title="Genereaza NHS Number" style="height:40px;padding:0 14px;background:var(--nhs-blue);color:#fff;border:none;border-radius:4px;font-family:'Fira Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;" onmouseover="this.style.background='var(--nhs-dark)'" onmouseout="this.style.background='var(--nhs-blue)'">&#8635; Generate</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Date of Birth</label>
+          <input id="dob" placeholder="e.g. 03/August/1999" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GP Practice -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🏥</div>
+      <h2>GP Practice Details</h2>
+    </div>
+    <div class="card-body">
+
+      <!-- AI GP Finder -->
+      <div style="background:#f0f6ff;border:1.5px solid #c2d5ef;border-radius:4px;padding:14px 16px;margin-bottom:18px;">
+        <label style="font-size:12px;font-weight:600;color:#005EB8;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:8px;">🤖 AI GP Finder — caută orice oraș UK</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="ai_city" list="uk_cities" placeholder="e.g. Manchester, Leeds, Cardiff, Birmingham..." style="flex:1;height:40px;border:1.5px solid #d0d9e2;border-radius:4px;padding:0 12px;font-size:14px;outline:none;" onfocus="this.style.borderColor='#005EB8'" onblur="this.style.borderColor='#d0d9e2'" onkeydown="if(event.key==='Enter')findGP()" />
+          <datalist id="uk_cities"><option value="Aberdeen"><option value="Bargoed"><option value="Bath"><option value="Birmingham"><option value="Blackpool"><option value="Bolton"><option value="Bournemouth"><option value="Bradford"><option value="Brighton"><option value="Bristol"><option value="Cardiff"><option value="Colchester"><option value="Coventry"><option value="Crawley"><option value="Derby"><option value="Doncaster"><option value="Edinburgh"><option value="Exeter"><option value="Glasgow"><option value="Gloucester"><option value="Grimsby"><option value="Huddersfield"><option value="Hull"><option value="Ipswich"><option value="Leeds"><option value="Leicester"><option value="Liverpool"><option value="London"><option value="Luton"><option value="Manchester"><option value="Middlesbrough"><option value="Milton Keynes"><option value="Newcastle upon Tyne"><option value="Northampton"><option value="Norwich"><option value="Nottingham"><option value="Oxford"><option value="Peterborough"><option value="Plymouth"><option value="Portsmouth"><option value="Preston"><option value="Reading"><option value="Rochdale"><option value="Salford"><option value="Sheffield"><option value="Southampton"><option value="Southend-on-Sea"><option value="Stockport"><option value="Stoke-on-Trent"><option value="Sunderland"><option value="Swansea"><option value="Swindon"><option value="Wakefield"><option value="Wigan"><option value="Wolverhampton"><option value="York"></datalist>
+          <button type="button" id="btnAI" onclick="findGP()" style="height:40px;padding:0 18px;background:#005EB8;color:#fff;border:none;border-radius:4px;font-family:'Fira Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;" onmouseover="this.style.background='#003087'" onmouseout="this.style.background='#005EB8'">🔍 Find GP</button>
+        </div>
+        <div id="ai_status" style="display:none;margin-top:10px;font-size:13px;padding:8px 12px;border-radius:4px;"></div>
+        <!-- Results list -->
+        <div id="ai_results" style="display:none;margin-top:10px;"></div>
+      </div>
+
+      <div class="grid-2" style="gap:16px">
+        <div class="field col-span-2">
+          <label>Practice Name</label>
+          <input id="gp_name" placeholder="e.g. South Street Surgery" />
+        </div>
+        <div class="field">
+          <label>Street</label>
+          <input id="gp_addr1" placeholder="e.g. South Street" />
+        </div>
+        <div class="field">
+          <label>Town</label>
+          <input id="gp_addr2" placeholder="e.g. Bargoed" />
+        </div>
+        <div class="field">
+          <label>Postcode</label>
+          <input id="gp_addr3" placeholder="e.g. CF14 3XQ" />
+        </div>
+        <div class="field">
+          <label>Reception Phone</label>
+          <input id="reception" placeholder="e.g. 0144 382 1255" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dates -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📅</div>
+      <h2>Registration Dates</h2>
+    </div>
+    <div class="card-body">
+      <div class="grid-2" style="gap:16px">
+        <div class="field">
+          <label>Date of Registration</label>
+          <input id="reg_date" placeholder="e.g. 13/04/2026" />
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-bar">
+    <button class="btn-generate" id="btnGen" onclick="generate()">⬇ Generate PDF</button>
+    <button class="btn-reset" onclick="resetForm()">Reset fields</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+</div>
+
+<script>
+function setStatus(type, msg) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + type;
+  if (type === 'loading') {
+    el.innerHTML = '<div class="spinner"></div><span>' + msg + '</span>';
+  } else if (type === 'success') {
+    el.innerHTML = '✅ ' + msg;
+  } else {
+    el.innerHTML = '❌ ' + msg;
+  }
+}
+
+function val(id) {
+  return document.getElementById(id).value.trim();
+}
+
+function generateNHS() {
+  for (;;) {
+    var d = [];
+    for (var i = 0; i < 9; i++) d.push(Math.floor(Math.random() * 10));
+    var sum = 0;
+    for (var j = 0; j < 9; j++) sum += d[j] * (10 - j);
+    var check = 11 - (sum % 11);
+    if (check === 10) continue;
+    if (check === 11) check = 0;
+    d.push(check);
+    var s = d.join("");
+    document.getElementById("nhs_no").value = s.slice(0,3) + " " + s.slice(3,6) + " " + s.slice(6);
+    break;
+  }
+}
+
+function setAIStatus(type, msg) {
+  var el = document.getElementById('ai_status');
+  el.style.display = 'block';
+  if (type === 'loading') {
+    el.style.background = '#e8f0fb'; el.style.color = '#005EB8'; el.style.border = '1px solid #c2d5ef';
+    el.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #c2d5ef;border-top-color:#005EB8;border-radius:50%;animation:spin 0.7s linear infinite;margin-right:8px;vertical-align:middle;"></span>' + msg;
+  } else if (type === 'success') {
+    el.style.background = '#e6f9ec'; el.style.color = '#1a7a3c'; el.style.border = '1px solid #a8ddb8';
+    el.innerHTML = '✅ ' + msg;
+  } else {
+    el.style.background = '#fdecea'; el.style.color = '#c0392b'; el.style.border = '1px solid #f5c6c2';
+    el.innerHTML = '❌ ' + msg;
+  }
+}
+
+function fillGP(gp) {
+  document.getElementById('gp_name').value   = gp.name   || '';
+  document.getElementById('gp_addr1').value  = gp.street || '';
+  document.getElementById('gp_addr2').value  = gp.town   || '';
+  document.getElementById('gp_addr3').value  = gp.postcode || '';
+  document.getElementById('reception').value = gp.phone  || '';
+  document.getElementById('ai_results').style.display = 'none';
+  setAIStatus('success', 'Completat: ' + gp.name);
+}
+
+const GP_DB = {"Aberdeen": [{"name": "Albyn Medical Practice", "street": "19-21 Albyn Place", "town": "Aberdeen", "postcode": "AB10 1YL", "phone": "01224 596440"}, {"name": "Forest Grove Medical Practice", "street": "110 Cornhill Drive", "town": "Aberdeen", "postcode": "AB16 5JB", "phone": "01224 693366"}, {"name": "Woodside Medical Practice", "street": "66 Miller Street", "town": "Aberdeen", "postcode": "AB24 3NZ", "phone": "01224 484848"}], "Birmingham": [{"name": "Acocks Green Medical Centre", "street": "1154 Warwick Road", "town": "Birmingham", "postcode": "B27 6BP", "phone": "0121 706 2220"}, {"name": "Selly Oak Group Practice", "street": "Vincent Drive", "town": "Birmingham", "postcode": "B29 6BD", "phone": "0121 415 5200"}, {"name": "Erdington Medical Practice", "street": "43 High Street", "town": "Erdington", "postcode": "B23 6RX", "phone": "0121 373 0236"}, {"name": "Handsworth Wood Medical Centre", "street": "323 Hamstead Road", "town": "Birmingham", "postcode": "B20 2RA", "phone": "0121 554 3635"}, {"name": "Kings Heath Surgery", "street": "105 Alcester Road South", "town": "Birmingham", "postcode": "B14 6DD", "phone": "0121 444 1010"}], "Bradford": [{"name": "Manningham Medical Centre", "street": "19 Lumb Lane", "town": "Bradford", "postcode": "BD8 7QT", "phone": "01274 480979"}, {"name": "Idle Medical Centre", "street": "5 Albion Road", "town": "Bradford", "postcode": "BD10 9PY", "phone": "01274 613444"}, {"name": "Shipley Medical Practice", "street": "Alexandra Road", "town": "Shipley", "postcode": "BD18 3EG", "phone": "01274 530200"}], "Brighton": [{"name": "York Road Surgery", "street": "3 York Road", "town": "Brighton", "postcode": "BN1 3NX", "phone": "01273 605920"}, {"name": "Hove Polyclinic", "street": "Christ Church Road", "town": "Hove", "postcode": "BN3 2EW", "phone": "01273 746200"}, {"name": "Brighton Station Health Centre", "street": "Viaduct Road", "town": "Brighton", "postcode": "BN1 4WT", "phone": "01273 663000"}], "Bristol": [{"name": "Bristol City Centre Practice", "street": "Tower Hill", "town": "Bristol", "postcode": "BS2 0JD", "phone": "0117 954 6600"}, {"name": "Clifton Village Surgery", "street": "1 Clifton Park Road", "town": "Bristol", "postcode": "BS8 3HN", "phone": "0117 973 1201"}, {"name": "Knowle Medical Practice", "street": "Broadfield Road", "town": "Bristol", "postcode": "BS4 2UH", "phone": "0117 977 2002"}, {"name": "Montpelier Health Centre", "street": "Bath Buildings", "town": "Bristol", "postcode": "BS6 5PT", "phone": "0117 954 1234"}], "Cardiff": [{"name": "Roath House Surgery", "street": "Newport Road", "town": "Cardiff", "postcode": "CF24 1RJ", "phone": "029 2049 2492"}, {"name": "Albany Road Surgery", "street": "Albany Road", "town": "Cardiff", "postcode": "CF24 3RR", "phone": "029 2048 1220"}, {"name": "Clifton Street Surgery", "street": "Clifton Street", "town": "Cardiff", "postcode": "CF24 1LU", "phone": "029 2046 2222"}, {"name": "Grangetown Medical Centre", "street": "Leckwith Road", "town": "Cardiff", "postcode": "CF11 7LB", "phone": "029 2071 0555"}, {"name": "Canton Health Centre", "street": "Sherborne Lane", "town": "Cardiff", "postcode": "CF11 6NA", "phone": "029 2022 5567"}, {"name": "Splott Medical Centre", "street": "Carlisle Street", "town": "Cardiff", "postcode": "CF24 2QN", "phone": "029 2046 3900"}], "Coventry": [{"name": "Stoney Stanton Road Surgery", "street": "156 Stoney Stanton Road", "town": "Coventry", "postcode": "CV1 4FS", "phone": "024 7622 1636"}, {"name": "Earlsdon Medical Centre", "street": "10 Albany Road", "town": "Coventry", "postcode": "CV5 6JQ", "phone": "024 7671 3555"}, {"name": "Walsgrave Surgery", "street": "4 Hinckley Road", "town": "Coventry", "postcode": "CV2 2DB", "phone": "024 7661 7007"}, {"name": "Bell Green Health Centre", "street": "Moor Lane", "town": "Coventry", "postcode": "CV6 7GH", "phone": "024 7666 3344"}], "Derby": [{"name": "St Thomas Road Surgery", "street": "31 St Thomas Road", "town": "Derby", "postcode": "DE23 8RH", "phone": "01332 340800"}, {"name": "Mickleover Surgery", "street": "Devonshire Drive", "town": "Mickleover", "postcode": "DE3 9GE", "phone": "01332 512277"}, {"name": "Cavendish Medical Centre", "street": "15 Cavendish Court", "town": "Derby", "postcode": "DE1 2DE", "phone": "01332 340900"}], "Doncaster": [{"name": "Wheatley Hills Surgery", "street": "Wheatley Hall Road", "town": "Doncaster", "postcode": "DN2 4LT", "phone": "01302 363636"}, {"name": "Adwick Medical Centre", "street": "Church Lane", "town": "Adwick le Street", "postcode": "DN6 7AD", "phone": "01302 722266"}, {"name": "Kirk Sandall Surgery", "street": "Doncaster Road", "town": "Kirk Sandall", "postcode": "DN3 1HR", "phone": "01302 882266"}], "Edinburgh": [{"name": "Tollcross Medical Centre", "street": "219 Lauriston Place", "town": "Edinburgh", "postcode": "EH3 9JU", "phone": "0131 228 6081"}, {"name": "Leith Community Treatment Centre", "street": "12 Junction Place", "town": "Edinburgh", "postcode": "EH6 5JA", "phone": "0131 553 5900"}, {"name": "Wester Hailes Health Agency", "street": "1 Westside Plaza", "town": "Edinburgh", "postcode": "EH14 2SW", "phone": "0131 537 9100"}, {"name": "Canongate Health Centre", "street": "1 Cranston Street", "town": "Edinburgh", "postcode": "EH8 8AR", "phone": "0131 556 5541"}, {"name": "Bruntsfield Medical Practice", "street": "11 Forbes Road", "town": "Edinburgh", "postcode": "EH10 4ED", "phone": "0131 229 3231"}], "Exeter": [{"name": "Whipton Surgery", "street": "Hospital Lane", "town": "Exeter", "postcode": "EX4 8PR", "phone": "01392 467477"}, {"name": "Heavitree Health Centre", "street": "South Lawn Terrace", "town": "Exeter", "postcode": "EX1 2RR", "phone": "01392 432931"}, {"name": "St Thomas Medical Group", "street": "69 Cowick Street", "town": "Exeter", "postcode": "EX4 1AT", "phone": "01392 256266"}], "Glasgow": [{"name": "Drumchapel Health Centre", "street": "80 Kinfauns Drive", "town": "Glasgow", "postcode": "G15 7TS", "phone": "0141 211 6170"}, {"name": "Woodside Health Centre", "street": "Barr Street", "town": "Glasgow", "postcode": "G20 7LR", "phone": "0141 531 9200"}, {"name": "Possilpark Health Centre", "street": "45 Denmark Street", "town": "Glasgow", "postcode": "G22 5EL", "phone": "0141 276 5200"}, {"name": "Gorbals Health Centre", "street": "45 Pine Place", "town": "Glasgow", "postcode": "G5 0BQ", "phone": "0141 429 5900"}, {"name": "Easterhouse Health Centre", "street": "9 Auchinlea Road", "town": "Glasgow", "postcode": "G34 9HQ", "phone": "0141 531 5490"}], "Leeds": [{"name": "West Lodge Medical Centre", "street": "18 Town Street", "town": "Leeds", "postcode": "LS12 3AD", "phone": "0113 279 7788"}, {"name": "Meanwood Health Centre", "street": "Rampart Road", "town": "Leeds", "postcode": "LS6 4BJ", "phone": "0113 295 1100"}, {"name": "Beeston Hill Medical Centre", "street": "Grove Road", "town": "Leeds", "postcode": "LS11 6HL", "phone": "0113 270 0044"}, {"name": "Cross Gates Medical Group", "street": "Austhorpe Road", "town": "Leeds", "postcode": "LS15 8BA", "phone": "0113 264 0055"}, {"name": "Hyde Park Medical Centre", "street": "24 Brudenell Road", "town": "Leeds", "postcode": "LS6 1BD", "phone": "0113 275 5566"}], "Leicester": [{"name": "Saffron Group Practice", "street": "Stonesby Avenue", "town": "Leicester", "postcode": "LE2 6TZ", "phone": "0116 283 0002"}, {"name": "New Walk Medical Centre", "street": "1 Jarrom Street", "town": "Leicester", "postcode": "LE2 7DH", "phone": "0116 254 1601"}, {"name": "Belgrave Medical Centre", "street": "Rothley Street", "town": "Leicester", "postcode": "LE4 6LF", "phone": "0116 266 7373"}, {"name": "Coleman Road Surgery", "street": "153 Coleman Road", "town": "Leicester", "postcode": "LE5 4LE", "phone": "0116 276 2020"}], "Liverpool": [{"name": "Abercromby Health Centre", "street": "122 Kensington", "town": "Liverpool", "postcode": "L7 2RF", "phone": "0151 285 6100"}, {"name": "Childwall Valley Medical Centre", "street": "Childwall Valley Road", "town": "Liverpool", "postcode": "L16 4PE", "phone": "0151 722 5858"}, {"name": "South Liverpool Medical Centre", "street": "Aigburth Road", "town": "Liverpool", "postcode": "L17 6BD", "phone": "0151 726 9200"}, {"name": "Toxteth Primary Care Centre", "street": "Windsor Street", "town": "Liverpool", "postcode": "L8 1XE", "phone": "0151 285 4000"}, {"name": "Garston Medical Centre", "street": "Woolton Road", "town": "Liverpool", "postcode": "L19 5NF", "phone": "0151 427 5511"}], "London": [{"name": "Soho Centre for Health", "street": "1 Frith Street", "town": "London", "postcode": "W1D 3HZ", "phone": "020 7534 6500"}, {"name": "Barnsbury Medical Practice", "street": "28 Huntingdon Street", "town": "London", "postcode": "N1 1BS", "phone": "020 7607 2992"}, {"name": "The Lisson Grove Health Centre", "street": "37 Lisson Grove", "town": "London", "postcode": "NW1 6TS", "phone": "020 7723 5581"}, {"name": "Stoke Newington Group Practice", "street": "Stoke Newington Road", "town": "London", "postcode": "N16 7XH", "phone": "020 7249 6110"}, {"name": "Clapham Park Medical Centre", "street": "Clarence Avenue", "town": "London", "postcode": "SW4 8LB", "phone": "020 8678 1122"}, {"name": "Stratford Medical Centre", "street": "1 Romford Road", "town": "London", "postcode": "E15 4LJ", "phone": "020 8534 5600"}, {"name": "Islington Central Medical Centre", "street": "28 Upper Street", "town": "London", "postcode": "N1 2UD", "phone": "020 7226 8966"}, {"name": "Bow Road Medical Practice", "street": "230 Bow Road", "town": "London", "postcode": "E3 3AH", "phone": "020 8980 1234"}], "Manchester": [{"name": "Ardwick Green Medical Centre", "street": "190 Stockport Road", "town": "Manchester", "postcode": "M13 0NE", "phone": "0161 248 3500"}, {"name": "Longsight Health Centre", "street": "513 Stockport Road", "town": "Manchester", "postcode": "M12 4LA", "phone": "0161 248 6444"}, {"name": "North Manchester General Practice", "street": "Charlestown Road", "town": "Manchester", "postcode": "M9 7RW", "phone": "0161 720 2222"}, {"name": "Fallowfield Surgery", "street": "Wilmslow Road", "town": "Manchester", "postcode": "M14 6XD", "phone": "0161 224 4466"}, {"name": "Hulme Family Practice", "street": "55 Stretford Road", "town": "Manchester", "postcode": "M15 5HN", "phone": "0161 226 8878"}, {"name": "Moss Side Health Centre", "street": "Monton Street", "town": "Manchester", "postcode": "M14 4GP", "phone": "0161 226 9333"}], "Middlesbrough": [{"name": "Park End Surgery", "street": "Park End Road", "town": "Middlesbrough", "postcode": "TS3 7AX", "phone": "01642 318181"}, {"name": "Acklam Medical Centre", "street": "Acklam Road", "town": "Middlesbrough", "postcode": "TS5 7HB", "phone": "01642 817272"}, {"name": "Linthorpe Medical Practice", "street": "Cambridge Road", "town": "Middlesbrough", "postcode": "TS5 5NL", "phone": "01642 813399"}], "Newcastle upon Tyne": [{"name": "Cruddas Park Surgery", "street": "1 Grange View", "town": "Newcastle upon Tyne", "postcode": "NE4 7SB", "phone": "0191 273 3611"}, {"name": "Walker Medical Group", "street": "93 Wharrier Street", "town": "Newcastle upon Tyne", "postcode": "NE6 2XX", "phone": "0191 265 9861"}, {"name": "Kenton Medical Centre", "street": "Hillhead Parkway", "town": "Newcastle upon Tyne", "postcode": "NE3 2JH", "phone": "0191 285 5355"}, {"name": "Byker Wall Medical Group", "street": "Raby Cross", "town": "Newcastle upon Tyne", "postcode": "NE6 2FG", "phone": "0191 265 8255"}], "Northampton": [{"name": "Northampton Health Centre", "street": "Vaux Crescent", "town": "Northampton", "postcode": "NN1 1DS", "phone": "01604 604141"}, {"name": "Abington Medical Centre", "street": "Rushmere Road", "town": "Northampton", "postcode": "NN1 5JB", "phone": "01604 634567"}], "Norwich": [{"name": "Unthank Road Surgery", "street": "23 Unthank Road", "town": "Norwich", "postcode": "NR2 2RB", "phone": "01603 622666"}, {"name": "Silver Road Surgery", "street": "131 Silver Road", "town": "Norwich", "postcode": "NR3 4TJ", "phone": "01603 426776"}, {"name": "Sprowston Medical Centre", "street": "Blue Boar Lane", "town": "Norwich", "postcode": "NR7 8AB", "phone": "01603 424567"}], "Nottingham": [{"name": "Bulwell Health Centre", "street": "Main Street", "town": "Bulwell", "postcode": "NG6 8QJ", "phone": "0115 975 4141"}, {"name": "Castle Medical Centre", "street": "Pickwick Way", "town": "Nottingham", "postcode": "NG7 7FN", "phone": "0115 942 2333"}, {"name": "Lister Medical Centre", "street": "Lister Road", "town": "Nottingham", "postcode": "NG7 5BB", "phone": "0115 978 7551"}, {"name": "Bestwood Park Medical Centre", "street": "Beckhampton Road", "town": "Nottingham", "postcode": "NG5 5QN", "phone": "0115 926 3355"}], "Oxford": [{"name": "East Oxford Health Centre", "street": "Manzil Way", "town": "Oxford", "postcode": "OX4 1XB", "phone": "01865 762200"}, {"name": "Jericho Health Centre", "street": "35a Walton Street", "town": "Oxford", "postcode": "OX2 6AA", "phone": "01865 311500"}, {"name": "Blackbird Leys Health Centre", "street": "Blackbird Leys Road", "town": "Oxford", "postcode": "OX4 6HW", "phone": "01865 778588"}], "Plymouth": [{"name": "Cumberland Centre", "street": "Damerel Close", "town": "Plymouth", "postcode": "PL1 4JZ", "phone": "01752 434800"}, {"name": "Devonport Health Centre", "street": "Chapel Street", "town": "Plymouth", "postcode": "PL1 4DT", "phone": "01752 221212"}, {"name": "St Judes Surgery", "street": "70 Alexandra Road", "town": "Plymouth", "postcode": "PL4 7DE", "phone": "01752 665566"}], "Portsmouth": [{"name": "Paulsgrove Health Centre", "street": "Marsden Road", "town": "Portsmouth", "postcode": "PO6 4JA", "phone": "023 9232 4341"}, {"name": "Fratton Medical Centre", "street": "247 Fratton Road", "town": "Portsmouth", "postcode": "PO1 5HB", "phone": "023 9282 4447"}, {"name": "Kingston Crescent Surgery", "street": "Kingston Crescent", "town": "Portsmouth", "postcode": "PO2 8AE", "phone": "023 9266 4455"}], "Reading": [{"name": "Tilehurst Village Surgery", "street": "School Road", "town": "Reading", "postcode": "RG31 5AJ", "phone": "0118 942 7581"}, {"name": "Oxford Road Medical Centre", "street": "268 Oxford Road", "town": "Reading", "postcode": "RG30 1AD", "phone": "0118 958 6020"}, {"name": "Kennet Surgery", "street": "58 Newtown Road", "town": "Reading", "postcode": "RG1 3NF", "phone": "0118 958 4484"}], "Sheffield": [{"name": "Crystal Peaks Medical Centre", "street": "12 Peak Square", "town": "Sheffield", "postcode": "S20 7PH", "phone": "0114 251 1960"}, {"name": "Firth Park Surgery", "street": "Firth Park Road", "town": "Sheffield", "postcode": "S5 6HH", "phone": "0114 257 1112"}, {"name": "Darnall Primary Care Centre", "street": "Darnall Road", "town": "Sheffield", "postcode": "S9 5AH", "phone": "0114 254 9900"}, {"name": "Burngreave Surgery", "street": "Burngreave Road", "town": "Sheffield", "postcode": "S3 9DA", "phone": "0114 272 2211"}], "Southampton": [{"name": "Bitterne Manor Surgery", "street": "10 Manor Farm Road", "town": "Southampton", "postcode": "SO18 1PF", "phone": "023 8044 7766"}, {"name": "Portswood Road Surgery", "street": "119 Portswood Road", "town": "Southampton", "postcode": "SO17 2NG", "phone": "023 8055 5060"}, {"name": "Shirley Health Partnership", "street": "Millbrook Road East", "town": "Southampton", "postcode": "SO15 1QP", "phone": "023 8077 1411"}], "Stoke-on-Trent": [{"name": "Trent Vale Medical Practice", "street": "Colwyn Drive", "town": "Stoke-on-Trent", "postcode": "ST4 6NY", "phone": "01782 847272"}, {"name": "Burslem Medical Centre", "street": "Moorland Road", "town": "Burslem", "postcode": "ST6 1HZ", "phone": "01782 838200"}, {"name": "Fenton Health Centre", "street": "Glebedale Road", "town": "Fenton", "postcode": "ST4 3LR", "phone": "01782 417777"}], "Sunderland": [{"name": "Pallion Health Centre", "street": "Livingstone Road", "town": "Sunderland", "postcode": "SR4 6AB", "phone": "0191 565 0101"}, {"name": "Town End Farm Surgery", "street": "Moorside", "town": "Sunderland", "postcode": "SR5 3AW", "phone": "0191 549 5050"}], "Swansea": [{"name": "Hafod Health Centre", "street": "Hafod Street", "town": "Swansea", "postcode": "SA1 2HB", "phone": "01792 655101"}, {"name": "Uplands Surgery", "street": "7 Uplands Crescent", "town": "Swansea", "postcode": "SA2 0PG", "phone": "01792 298200"}, {"name": "Sketty Medical Centre", "street": "7 Gower Road", "town": "Sketty", "postcode": "SA2 9BX", "phone": "01792 207755"}], "Wolverhampton": [{"name": "Penn Road Surgery", "street": "268 Penn Road", "town": "Wolverhampton", "postcode": "WV4 5JR", "phone": "01902 345678"}, {"name": "Park Village Surgery", "street": "Prestwood Road West", "town": "Wolverhampton", "postcode": "WV11 1RJ", "phone": "01902 721500"}, {"name": "All Saints Medical Centre", "street": "Woden Road South", "town": "Wolverhampton", "postcode": "WV10 0BS", "phone": "01902 453000"}], "York": [{"name": "Haxby Group Practice", "street": "1 Park Lane", "town": "York", "postcode": "YO32 2LY", "phone": "01904 763115"}, {"name": "Jorvik Medical Practice", "street": "Monkgate", "town": "York", "postcode": "YO31 7PB", "phone": "01904 625500"}, {"name": "Rawcliffe Surgery", "street": "Field Lane", "town": "York", "postcode": "YO30 5PH", "phone": "01904 330020"}], "Bargoed": [{"name": "South Street Surgery", "street": "South Street", "town": "Bargoed", "postcode": "CF81 8AU", "phone": "01443 830318"}, {"name": "Darran Road Surgery", "street": "Darran Road", "town": "Bargoed", "postcode": "CF81 8JP", "phone": "01443 875555"}], "Bath": [{"name": "Oldfield Surgery", "street": "21 Oldfield Road", "town": "Bath", "postcode": "BA2 3ND", "phone": "01225 421371"}, {"name": "St James Surgery", "street": "1 Belvedere", "town": "Bath", "postcode": "BA1 5HR", "phone": "01225 463154"}, {"name": "Bathampton Surgery", "street": "Mill Lane", "town": "Bathampton", "postcode": "BA2 6TN", "phone": "01225 462554"}], "Blackpool": [{"name": "South Shore Group Practice", "street": "Highfield Road", "town": "Blackpool", "postcode": "FY4 2JF", "phone": "01253 344488"}, {"name": "Layton Medical Centre", "street": "Westcliffe Drive", "town": "Blackpool", "postcode": "FY3 7EL", "phone": "01253 393939"}, {"name": "Blackpool Central Surgery", "street": "Church Street", "town": "Blackpool", "postcode": "FY1 1HU", "phone": "01253 622666"}], "Bolton": [{"name": "Halliwell Health Centre", "street": "Balmoral Road", "town": "Bolton", "postcode": "BL1 8RA", "phone": "01204 307700"}, {"name": "Farnworth Medical Centre", "street": "Frederick Street", "town": "Farnworth", "postcode": "BL4 8AW", "phone": "01204 706070"}, {"name": "Westhoughton Health Centre", "street": "Central Street", "town": "Westhoughton", "postcode": "BL5 3XJ", "phone": "01942 816777"}], "Bournemouth": [{"name": "Springbourne Health Centre", "street": "Hannington Road", "town": "Bournemouth", "postcode": "BH7 6JR", "phone": "01202 394545"}, {"name": "Boscombe West Surgery", "street": "Palmerston Road", "town": "Bournemouth", "postcode": "BH1 4HT", "phone": "01202 394394"}, {"name": "Winton Medical Practice", "street": "Wimborne Road", "town": "Bournemouth", "postcode": "BH9 2EN", "phone": "01202 521234"}], "Colchester": [{"name": "Mersea Road Surgery", "street": "200 Mersea Road", "town": "Colchester", "postcode": "CO2 8PG", "phone": "01206 545555"}, {"name": "Greenstead Medical Practice", "street": "Greenstead Road", "town": "Colchester", "postcode": "CO4 3EP", "phone": "01206 853900"}], "Crawley": [{"name": "Bewbush Medical Centre", "street": "Dobbins Place", "town": "Crawley", "postcode": "RH11 8XQ", "phone": "01293 885700"}, {"name": "Ifield Medical Practice", "street": "Ifield Drive", "town": "Crawley", "postcode": "RH11 0DG", "phone": "01293 612222"}], "Gloucester": [{"name": "Barton Street Medical Centre", "street": "176 Barton Street", "town": "Gloucester", "postcode": "GL1 4HX", "phone": "01452 502700"}, {"name": "Podsmead Medical Centre", "street": "45 Grange Road", "town": "Gloucester", "postcode": "GL1 5NB", "phone": "01452 525252"}], "Grimsby": [{"name": "Pelham Medical Group", "street": "Pelham Road", "town": "Grimsby", "postcode": "DN34 4SS", "phone": "01472 879000"}, {"name": "Heneage Medical Centre", "street": "Heneage Road", "town": "Grimsby", "postcode": "DN32 9EB", "phone": "01472 344444"}], "Huddersfield": [{"name": "Almondbury Surgery", "street": "Vicar Lane", "town": "Huddersfield", "postcode": "HD5 8TA", "phone": "01484 423201"}, {"name": "Lindley Medical Centre", "street": "Lidget Street", "town": "Lindley", "postcode": "HD3 3JP", "phone": "01484 654321"}, {"name": "Crosland Moor Surgery", "street": "Blackmoorfoot Road", "town": "Huddersfield", "postcode": "HD4 5AG", "phone": "01484 531234"}], "Hull": [{"name": "Calvert Practice", "street": "Calvert Lane", "town": "Hull", "postcode": "HU4 6BP", "phone": "01482 563900"}, {"name": "Greenwood Avenue Surgery", "street": "Greenwood Avenue", "town": "Hull", "postcode": "HU6 9RU", "phone": "01482 855534"}, {"name": "Sutton Village Surgery", "street": "Church Street", "town": "Sutton-on-Hull", "postcode": "HU7 4TS", "phone": "01482 782040"}], "Ipswich": [{"name": "Sidegate Lane Surgery", "street": "Sidegate Lane", "town": "Ipswich", "postcode": "IP4 3DA", "phone": "01473 727627"}, {"name": "Nacton Road Surgery", "street": "249 Nacton Road", "town": "Ipswich", "postcode": "IP3 9JN", "phone": "01473 715560"}], "Luton": [{"name": "Luton Primary Care Centre", "street": "6 Union Street", "town": "Luton", "postcode": "LU1 3AN", "phone": "01582 495000"}, {"name": "Bury Park Medical Centre", "street": "Dunstable Road", "town": "Luton", "postcode": "LU4 8RG", "phone": "01582 576666"}, {"name": "Marsh Farm Surgery", "street": "Purley Centre", "town": "Luton", "postcode": "LU3 3SR", "phone": "01582 571818"}], "Milton Keynes": [{"name": "Wolverton Medical Centre", "street": "Gloucester Road", "town": "Wolverton", "postcode": "MK12 5FG", "phone": "01908 222444"}, {"name": "Eaglestone Health Centre", "street": "Standing Way", "town": "Milton Keynes", "postcode": "MK6 5AZ", "phone": "01908 663399"}, {"name": "Bletchley Health Centre", "street": "Bletchley Road", "town": "Bletchley", "postcode": "MK2 2JW", "phone": "01908 274488"}], "Peterborough": [{"name": "Queensgate Medical Practice", "street": "Queensgate", "town": "Peterborough", "postcode": "PE1 1NG", "phone": "01733 312345"}, {"name": "Orton Medical Practice", "street": "Orton Centre", "town": "Peterborough", "postcode": "PE2 5UR", "phone": "01733 394939"}], "Preston": [{"name": "Avenham Medical Centre", "street": "St Georges Road", "town": "Preston", "postcode": "PR1 1SN", "phone": "01772 256661"}, {"name": "Fulwood Medical Centre", "street": "Midgery Lane", "town": "Fulwood", "postcode": "PR2 9PH", "phone": "01772 700199"}, {"name": "Ribbleton Health Centre", "street": "Miller Road", "town": "Preston", "postcode": "PR2 6YE", "phone": "01772 795795"}], "Rochdale": [{"name": "Spotland Group Practice", "street": "Edenfield Road", "town": "Rochdale", "postcode": "OL12 6LS", "phone": "01706 345678"}, {"name": "Warwick Mill Surgery", "street": "Warwick Street", "town": "Rochdale", "postcode": "OL16 5NG", "phone": "01706 710112"}], "Salford": [{"name": "Pendleton Gateway Practice", "street": "1 Broadwalk", "town": "Salford", "postcode": "M6 5FX", "phone": "0161 206 0020"}, {"name": "Ordsall Primary Care Centre", "street": "Clippers Quay", "town": "Salford", "postcode": "M5 3SL", "phone": "0161 206 1234"}], "Southend-on-Sea": [{"name": "Southend Medical Centre", "street": "27 Alexandra Street", "town": "Southend-on-Sea", "postcode": "SS1 1BX", "phone": "01702 352222"}, {"name": "Westcliff Medical Group", "street": "London Road", "town": "Westcliff-on-Sea", "postcode": "SS0 9ST", "phone": "01702 393939"}], "Stockport": [{"name": "Stepping Hill Surgery", "street": "Poplar Grove", "town": "Stockport", "postcode": "SK2 7JE", "phone": "0161 483 1234"}, {"name": "Reddish Health Centre", "street": "Gorton Road", "town": "Reddish", "postcode": "SK5 6DE", "phone": "0161 480 5544"}], "Swindon": [{"name": "Lawn Medical Centre", "street": "Noble Fir Road", "town": "Swindon", "postcode": "SN25 1YA", "phone": "01793 616040"}, {"name": "Eldene Health Centre", "street": "Eldene Centre", "town": "Swindon", "postcode": "SN3 3RZ", "phone": "01793 822700"}, {"name": "Toothill Surgery", "street": "Marconi Drive", "town": "Swindon", "postcode": "SN5 8AL", "phone": "01793 875500"}], "Wakefield": [{"name": "Northgate Surgery", "street": "120 Northgate", "town": "Wakefield", "postcode": "WF1 3BH", "phone": "01924 375333"}, {"name": "Ossett Medical Centre", "street": "Station Road", "town": "Ossett", "postcode": "WF5 8AN", "phone": "01924 273966"}], "Wigan": [{"name": "Pemberton Group Practice", "street": "Liverpool Road", "town": "Pemberton", "postcode": "WN5 9EH", "phone": "01942 222333"}, {"name": "Douglas Road Surgery", "street": "Douglas Road", "town": "Wigan", "postcode": "WN1 2ST", "phone": "01942 242424"}]};
+
+async function findGP() {
+  var city = document.getElementById('ai_city').value.trim();
+  if (!city) { setAIStatus('error', 'Introdu un oras UK.'); return; }
+  
+  // Cauta in baza de date locala (case-insensitive, partial match)
+  var cityLower = city.toLowerCase();
+  var key = Object.keys(GP_DB).find(k => k.toLowerCase() === cityLower)
+         || Object.keys(GP_DB).find(k => k.toLowerCase().includes(cityLower))
+         || Object.keys(GP_DB).find(k => cityLower.includes(k.toLowerCase()));
+  
+  var gps = key ? GP_DB[key] : [];
+  
+  if (!gps.length) {
+    setAIStatus('error', 'Niciun GP gasit pentru "' + city + '". Incearca: ' + Object.keys(GP_DB).slice(0,5).join(', ') + '...');
+    return;
+  }
+  
+  var resultsEl = document.getElementById('ai_results');
+  resultsEl.innerHTML = '<div style="font-size:12px;font-weight:600;color:#005EB8;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">Selecteaza GP (' + gps.length + ' gasite in ' + (key||city) + '):</div>' +
+    gps.map(function(gp) {
+      return '<div onclick=\'fillGP(' + JSON.stringify(gp).replace(/\'/g,"&#39;") + ')\' style="padding:10px 12px;margin-bottom:6px;border:1.5px solid #c2d5ef;border-radius:4px;cursor:pointer;background:#fff;transition:background 0.15s;" onmouseover="this.style.background=\'#e8f0fb\'" onmouseout="this.style.background=\'#fff\'">' +
+        '<div style="font-weight:600;font-size:13px;color:#003087;">' + (gp.name||'') + '</div>' +
+        '<div style="font-size:12px;color:#555;margin-top:2px;">' + [gp.street,gp.town,gp.postcode].filter(Boolean).join(', ') + '</div>' +
+        '<div style="font-size:12px;color:#005EB8;margin-top:2px;">' + (gp.phone||'') + '</div>' +
+      '</div>';
+    }).join('');
+  resultsEl.style.display = 'block';
+  setAIStatus('success', gps.length + ' GP-uri gasite in ' + (key||city) + '. Click sa selectezi.');
+}
+
+async function generate() {
+  const btn = document.getElementById('btnGen');
+  btn.disabled = true;
+  setStatus('loading', 'Generez PDF-ul...');
+
+  const data = {
+    patient_name:  val('patient_name'),
+    patient_addr1: val('patient_addr1'),
+    patient_addr2: val('patient_addr2'),
+    patient_addr3: val('patient_addr3'),
+    nhs_no:        val('nhs_no'),
+    dob:           val('dob'),
+    gp_name:       val('gp_name'),
+    gp_addr1:      val('gp_addr1'),
+    gp_addr2:      val('gp_addr2'),
+    gp_addr3:      val('gp_addr3'),
+    reception:     val('reception'),
+    reg_date:      val('reg_date'),
+  };
+
+  try {
+    const resp = await fetch('/generate-nhs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(err || 'Server error ' + resp.status);
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'nhs-registration.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setStatus('success', 'PDF generat cu succes! Descărcarea a început.');
+  } catch (e) {
+    setStatus('error', 'Eroare: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function resetForm() {
+  ['patient_name','patient_addr1','patient_addr2','patient_addr3',
+   'nhs_no','dob','gp_name','gp_addr1','gp_addr2','gp_addr3',
+   'reception','reg_date'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  const el = document.getElementById('status');
+  el.className = 'status';
+}
+
+// Prefill cu exemplul din document
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('nhs_no').value        = '984 409 3834';
+  document.getElementById('gp_name').value       = 'South Street Surgery';
+  document.getElementById('gp_addr1').value      = 'South Street';
+  document.getElementById('gp_addr2').value      = 'Bargoed';
+  document.getElementById('gp_addr3').value      = 'CF14 3XQ';
+  document.getElementById('reception').value     = '0144 382 1255';
+  document.getElementById('reg_date').value      = '13/04/2026';
+});
+</script>
+</body>
+</html>
