@@ -705,7 +705,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
 def main():
-    port=int(os.environ.get("PORT", sys.argv[1] if len(sys.argv)>1 else 8765))
+    port=int(os.environ.get("PORT", 8080))
     if not PDF_SOURCE.is_file():
         print(f"EROARE: {PDF_SOURCE}"); sys.exit(1)
     server=HTTPServer(("0.0.0.0",port),Handler)
