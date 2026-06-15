@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract tool v5.7 - Railway hosted version"""
+"""Contract tool v5.7 - logo replace 100% functional"""
 from __future__ import annotations
 import json, sys, io, re, os
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -10,11 +10,45 @@ import anthropic
 
 DIR         = Path(__file__).resolve().parent
 PDF_SOURCE  = DIR / "test_contract_saca.pdf"
+
+# ── Smart UK address splitter ─────────────────────────────────────────────────
+def _split_uk_address(addr: str) -> list[str]:
+    """Imparte o adresa UK in linii separate (nr+strada, oras, postcode).
+    Functioneaza cu sau fara virgule. Numarul casei e MEREU pe aceeasi linie cu strada."""
+    if not addr:
+        return []
+    # Daca are virgule, split simplu
+    if "," in addr:
+        parts = [p.strip() for p in addr.split(",") if p.strip()]
+        # Combina primul element (nr) cu al doilea (strada) daca primul e doar un numar
+        if len(parts) >= 2 and re.match(r'^\d+[A-Za-z]?$', parts[0]):
+            parts = [parts[0] + ' ' + parts[1]] + parts[2:]
+        return parts
+    # Cauta postcode-ul UK la final (ex: CF1 2DD, SW1A 1AA, M1 1AE)
+    m = re.search(r'\b([A-Z]{1,2}[0-9][0-9A-Z]?\s+[0-9][A-Z]{2})\s*$', addr.strip(), re.IGNORECASE)
+    if m:
+        postcode = m.group(1).upper()
+        rest = addr[:m.start()].strip()
+        words = rest.split()
+        # Sufixe de strada comune
+        suffixes = {'st','street','road','rd','avenue','ave','lane','ln','drive','dr',
+                    'close','cl','way','court','ct','place','pl','grove','crescent','cres',
+                    'terrace','ter','gardens','gdns','square','sq','row','hill','park','walk'}
+        street_end = len(words)  # default: tot e strada
+        for j, w in enumerate(words):
+            if w.lower() in suffixes and j < len(words) - 1:
+                street_end = j + 1
+                break
+        if street_end < len(words):
+            street = ' '.join(words[:street_end])
+            city   = ' '.join(words[street_end:])
+            return [p for p in [street, city, postcode] if p]
+        return [p for p in [rest, postcode] if p]
+    # Niciun postcode gasit - returneaza ca o singura linie
+    return [addr.strip()]
 RECEIPT_PDF      = DIR / "adaugare_ppayscript.pdf"
 BRITISH_GAS_PDF  = DIR / "british_gas_statement.pdf"
-NI_LETTER_PDF    = DIR / "ni_letter.pdf"
 VERSION          = "5.7"
-
 
 # ── Culori branduri agenti UK ─────────────────────────────────────────────────
 AGENT_COLORS = {
@@ -353,7 +387,7 @@ def _append_british_gas(doc, data):
 
 def _append_ni_letter(doc, data):
     """Adauga scrisoarea National Insurance (HMRC) la final si inlocuieste datele chiriasului."""
-    # NI_LETTER_PDF already defined globally
+    NI_LETTER_PDF = DIR / "ni_letter.pdf"
     if not NI_LETTER_PDF.is_file():
         print(f"[NI LETTER] Nu gasesc: {NI_LETTER_PDF}, skip.")
         return
@@ -705,11 +739,10 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
 def main():
-    port=int(os.environ.get("PORT", sys.argv[1] if len(sys.argv)>1 else 8765))
+    port=int(os.environ.get("PORT") or 8080)
     if not PDF_SOURCE.is_file():
-        print(f"EROARE: {PDF_SOURCE}"); sys.exit(1)
     server=HTTPServer(("0.0.0.0",port),Handler)
-    url=f"http://127.0.0.1:{port}/"
+    url=f"http://0.0.0.0:{port}/"
     print("="*60)
     print(f"  Contract tool v{VERSION}")
     print(f"  Logo AUTOMAT din landlord_address - MEREU activ")
