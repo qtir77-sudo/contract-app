@@ -298,6 +298,20 @@ def _append_receipt(doc, data):
     for i,pt in enumerate(parts[:5]):
         p.insert_text((76,[455,470,484,499,513][i]),pt,fontsize=9,fontname=RF,color=(0,0,0))
 
+def _split_uk_address(addr: str) -> list[str]:
+    """Imparte o adresa UK in maxim 4 randuri pentru inserare in PDF."""
+    # Daca adresa contine virgule, le folosim ca separator
+    if "," in addr:
+        parts = [p.strip() for p in addr.split(",") if p.strip()]
+        return parts[:4]
+    # Altfel, imparte dupa newline
+    if "\n" in addr:
+        parts = [p.strip() for p in addr.split("\n") if p.strip()]
+        return parts[:4]
+    # Fallback: returneaza adresa intreaga pe un singur rand
+    return [addr]
+
+
 def _append_british_gas(doc, data):
     """Adauga British Gas statement PDF la finalul documentului si inlocuieste datele chiriasului."""
     if not BRITISH_GAS_PDF.is_file():
