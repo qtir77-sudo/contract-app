@@ -83,6 +83,41 @@
     .tab-color-picker::-webkit-color-swatch { border: 1.5px solid #555; border-radius: 4px; }
     .tab-color-picker::-moz-color-swatch { border: 1.5px solid #555; border-radius: 4px; }
 
+    /* ── ORB 3D ANIMAT (colț dreapta-jos) ── */
+    .orb-3d-container {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      width: 110px;
+      height: 110px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .orb-3d-float {
+      width: 100%;
+      height: 100%;
+      animation: orbFloat 4.5s ease-in-out infinite;
+    }
+    .orb-3d-sphere {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 28%, #ffffff 0%, #9fd8ff 14%, #3b82f6 48%, #1e3a8a 78%, #060b1c 100%);
+      box-shadow: 0 0 30px rgba(59,130,246,0.6), 0 0 70px rgba(59,130,246,0.32), inset -14px -14px 35px rgba(0,0,0,0.55);
+      animation: orbRotate 5s linear infinite;
+    }
+    @keyframes orbFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes orbRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @media (max-width: 600px) {
+      .orb-3d-container { width: 68px; height: 68px; bottom: 14px; right: 14px; }
+    }
+
     /* ── TAB PANELS ── */
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -205,6 +240,14 @@
   <div class="tab-wrap">
     <button class="tab-btn programari" id="tabbtn-programari" onclick="switchTab('programari')">📅 Lista Programări</button>
     <input type="color" class="tab-color-picker" id="color-programari" value="#f1c40f" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('programari', this.value)">
+  </div>
+  <div class="tab-wrap">
+    <button class="tab-btn complete" id="tabbtn-complete" onclick="switchTab('complete')">✅ Dosare Complete!</button>
+    <input type="color" class="tab-color-picker" id="color-complete" value="#27ae60" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('complete', this.value)">
+  </div>
+  <div class="tab-wrap">
+    <button class="tab-btn neverificate" id="tabbtn-neverificate" onclick="switchTab('neverificate')">⚠️ Dosare Neverificate!</button>
+    <input type="color" class="tab-color-picker" id="color-neverificate" value="#e67e22" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('neverificate', this.value)">
   </div>
 </div>
 
@@ -3807,6 +3850,7 @@ window.addEventListener('DOMContentLoaded', () => {
       <table style="width:100%; border-collapse:collapse; font-family:'Fira Sans',sans-serif; font-size:14px;">
         <thead>
           <tr style="background:#f1c40f;">
+            <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">#</th>
             <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Nume</th>
             <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">User</th>
             <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Parolă</th>
@@ -3819,6 +3863,114 @@ window.addEventListener('DOMContentLoaded', () => {
         <tbody id="programariTableBody"></tbody>
       </table>
       <div id="programariEmpty" style="padding:28px; text-align:center; color:#94a3b8; font-size:14px;">Nicio programare adăugată încă.</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- DOSARE COMPLETE PANEL -->
+<div id="panel-complete" class="tab-panel">
+  <header>
+    <h1>✅ Dosare Complete!</h1>
+    <p>Adaugă și gestionează dosarele complete</p>
+  </header>
+
+  <main style="max-width: 900px; margin: 0 auto; padding: 24px 20px 60px;">
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); padding:20px 24px; margin-bottom:20px; border-left:4px solid #27ae60;">
+      <h2 style="font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:#4a5568; font-weight:700; margin-bottom:16px;">Adaugă dosar complet</h2>
+      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:14px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">User</label>
+          <input id="complete_user" type="text" placeholder="User" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Parolă</label>
+          <input id="complete_parola" type="text" placeholder="Parolă" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:16px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Email</label>
+          <input id="complete_email" type="email" placeholder="Email" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Parolă Email</label>
+          <input id="complete_parolaEmail" type="text" placeholder="Parolă Email" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <button onclick="addDosar('complete')" style="background:#27ae60; color:#fff; border:none; height:44px; padding:0 28px; border-radius:4px; font-family:'Fira Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">+ Adaugă dosar</button>
+    </div>
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;">
+      <table style="width:100%; border-collapse:collapse; font-family:'Fira Sans',sans-serif; font-size:14px;">
+        <thead>
+          <tr style="background:#27ae60;">
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">#</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">User</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Parolă</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Email</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Parolă Email</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Acțiuni</th>
+          </tr>
+        </thead>
+        <tbody id="completeDosareTableBody"></tbody>
+      </table>
+      <div id="completeDosareEmpty" style="padding:28px; text-align:center; color:#94a3b8; font-size:14px;">Niciun dosar adăugat încă.</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- DOSARE NEVERIFICATE PANEL -->
+<div id="panel-neverificate" class="tab-panel">
+  <header>
+    <h1>⚠️ Dosare Neverificate!</h1>
+    <p>Adaugă și gestionează dosarele neverificate</p>
+  </header>
+
+  <main style="max-width: 900px; margin: 0 auto; padding: 24px 20px 60px;">
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); padding:20px 24px; margin-bottom:20px; border-left:4px solid #e67e22;">
+      <h2 style="font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:#4a5568; font-weight:700; margin-bottom:16px;">Adaugă dosar neverificat</h2>
+      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:14px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">User</label>
+          <input id="neverificate_user" type="text" placeholder="User" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Parolă</label>
+          <input id="neverificate_parola" type="text" placeholder="Parolă" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:16px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Email</label>
+          <input id="neverificate_email" type="email" placeholder="Email" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Parolă Email</label>
+          <input id="neverificate_parolaEmail" type="text" placeholder="Parolă Email" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <button onclick="addDosar('neverificate')" style="background:#e67e22; color:#fff; border:none; height:44px; padding:0 28px; border-radius:4px; font-family:'Fira Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">+ Adaugă dosar</button>
+    </div>
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;">
+      <table style="width:100%; border-collapse:collapse; font-family:'Fira Sans',sans-serif; font-size:14px;">
+        <thead>
+          <tr style="background:#e67e22;">
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">#</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">User</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Parolă</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Email</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Parolă Email</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Acțiuni</th>
+          </tr>
+        </thead>
+        <tbody id="neverificateDosareTableBody"></tbody>
+      </table>
+      <div id="neverificateDosareEmpty" style="padding:28px; text-align:center; color:#94a3b8; font-size:14px;">Niciun dosar adăugat încă.</div>
     </div>
 
   </main>
@@ -3856,7 +4008,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── CULOARE PER TAB (selectabilă, salvată local) ────────────
-  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', programari: '#f1c40f' };
+  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', programari: '#f1c40f', complete: '#27ae60', neverificate: '#e67e22' };
 
   function getTabColors() {
     try {
@@ -3930,6 +4082,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const tr = document.createElement('tr');
       tr.style.borderTop = '1px solid #e2e8f0';
       tr.innerHTML =
+        '<td style="padding:10px 14px; color:#94a3b8; font-weight:600;">' + (i + 1) + '</td>' +
         '<td style="padding:10px 14px;">' + escapeHtml(p.nume) + '</td>' +
         '<td style="padding:10px 14px;">' + escapeHtml(p.user) + '</td>' +
         '<td style="padding:10px 14px; font-family:\'Fira Mono\',monospace;">' + escapeHtml(p.parola || '') + '</td>' +
@@ -3974,7 +4127,78 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('DOMContentLoaded', function () {
     applyTabColors();
     renderProgramari();
+    renderDosare('complete');
+    renderDosare('neverificate');
   });
+
+  // ── DOSARE (Complete / Neverificate) ─────────────────────────
+  function loadDosare(kind) {
+    try { return JSON.parse(localStorage.getItem('dosare_' + kind) || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function saveDosare(kind, list) {
+    localStorage.setItem('dosare_' + kind, JSON.stringify(list));
+  }
+
+  function renderDosare(kind) {
+    const list = loadDosare(kind);
+    const tbody = document.getElementById(kind + 'DosareTableBody');
+    const empty = document.getElementById(kind + 'DosareEmpty');
+    if (!tbody || !empty) return;
+    tbody.innerHTML = '';
+    if (list.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    list.forEach(function (d, i) {
+      const tr = document.createElement('tr');
+      tr.style.borderTop = '1px solid #e2e8f0';
+      tr.innerHTML =
+        '<td style="padding:10px 14px; color:#94a3b8; font-weight:600;">' + (i + 1) + '</td>' +
+        '<td style="padding:10px 14px;">' + escapeHtml(d.user) + '</td>' +
+        '<td style="padding:10px 14px; font-family:\'Fira Mono\',monospace;">' + escapeHtml(d.parola) + '</td>' +
+        '<td style="padding:10px 14px;">' + escapeHtml(d.email) + '</td>' +
+        '<td style="padding:10px 14px; font-family:\'Fira Mono\',monospace;">' + escapeHtml(d.parolaEmail) + '</td>' +
+        '<td style="padding:10px 14px;"><button onclick="deleteDosar(\'' + kind + '\',' + i + ')" style="background:#fdecea;color:#c0392b;border:1px solid #f5c6c2;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;font-size:13px;">Șterge</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addDosar(kind) {
+    const user = document.getElementById(kind + '_user').value.trim();
+    const parola = document.getElementById(kind + '_parola').value.trim();
+    const email = document.getElementById(kind + '_email').value.trim();
+    const parolaEmail = document.getElementById(kind + '_parolaEmail').value.trim();
+    if (!user || !parola || !email || !parolaEmail) {
+      alert('Completează toate câmpurile: User, Parolă, Email, Parolă Email.');
+      return;
+    }
+    const list = loadDosare(kind);
+    list.push({ user: user, parola: parola, email: email, parolaEmail: parolaEmail });
+    saveDosare(kind, list);
+    document.getElementById(kind + '_user').value = '';
+    document.getElementById(kind + '_parola').value = '';
+    document.getElementById(kind + '_email').value = '';
+    document.getElementById(kind + '_parolaEmail').value = '';
+    renderDosare(kind);
+  }
+
+  function deleteDosar(kind, index) {
+    const list = loadDosare(kind);
+    list.splice(index, 1);
+    saveDosare(kind, list);
+    renderDosare(kind);
+  }
 </script>
+
+<!-- ORB 3D ANIMAT -->
+<div class="orb-3d-container">
+  <div class="orb-3d-float">
+    <div class="orb-3d-sphere"></div>
+  </div>
+</div>
+
 </body>
 </html>
