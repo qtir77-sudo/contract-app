@@ -54,10 +54,34 @@
       color: #fff;
       border-bottom-color: #fff;
     }
+    .tab-btn.programari {
+      background: #111;
+      color: #aaa;
+      border-bottom-color: transparent;
+    }
+    .tab-btn.programari.active {
+      background: #f1c40f;
+      color: #1f2933;
+      border-bottom-color: #fff;
+    }
     .tab-btn:hover:not(.active) {
       background: #222;
       color: #fff;
     }
+    .tab-wrap { flex: 1; max-width: 260px; display: flex; align-items: stretch; background: #111; }
+    .tab-wrap .tab-btn { max-width: none; }
+    .tab-color-picker {
+      width: 30px;
+      border: none;
+      background: #111;
+      cursor: pointer;
+      padding: 6px 4px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .tab-color-picker::-webkit-color-swatch-wrapper { padding: 3px; }
+    .tab-color-picker::-webkit-color-swatch { border: 1.5px solid #555; border-radius: 4px; }
+    .tab-color-picker::-moz-color-swatch { border: 1.5px solid #555; border-radius: 4px; }
 
     /* ── TAB PANELS ── */
     .tab-panel { display: none; }
@@ -170,8 +194,18 @@
 
 <!-- TAB BAR -->
 <div class="tab-bar">
-  <button class="tab-btn contract active" onclick="switchTab('contract')">📄 Completare Contract</button>
-  <button class="tab-btn nhs" onclick="switchTab('nhs')">🏥 NHS GP Letter</button>
+  <div class="tab-wrap">
+    <button class="tab-btn contract active" id="tabbtn-contract" onclick="switchTab('contract')">📄 Completare Contract</button>
+    <input type="color" class="tab-color-picker" id="color-contract" value="#1a5f4a" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('contract', this.value)">
+  </div>
+  <div class="tab-wrap">
+    <button class="tab-btn nhs" id="tabbtn-nhs" onclick="switchTab('nhs')">🏥 NHS GP Letter</button>
+    <input type="color" class="tab-color-picker" id="color-nhs" value="#c0392b" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('nhs', this.value)">
+  </div>
+  <div class="tab-wrap">
+    <button class="tab-btn programari" id="tabbtn-programari" onclick="switchTab('programari')">📅 Lista Programări</button>
+    <input type="color" class="tab-color-picker" id="color-programari" value="#f1c40f" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('programari', this.value)">
+  </div>
 </div>
 
 <!-- CONTRACT PANEL -->
@@ -3727,6 +3761,69 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </div>
 
+<!-- PROGRAMARI PANEL -->
+<div id="panel-programari" class="tab-panel">
+  <header>
+    <h1>📅 Lista Programări</h1>
+    <p>Adaugă și gestionează programările</p>
+  </header>
+
+  <main style="max-width: 900px; margin: 0 auto; padding: 24px 20px 60px;">
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); padding:20px 24px; margin-bottom:20px; border-left:4px solid #f1c40f;">
+      <h2 style="font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:#4a5568; font-weight:700; margin-bottom:16px;">Adaugă programare nouă</h2>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:14px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Nume</label>
+          <input id="prog_nume" type="text" placeholder="Nume" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">User</label>
+          <input id="prog_user" type="text" placeholder="User" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Parolă</label>
+          <input id="prog_parola" type="text" placeholder="Parolă" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:16px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Email</label>
+          <input id="prog_email" type="email" placeholder="Email" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Data</label>
+          <input id="prog_data" type="date" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Ora</label>
+          <input id="prog_ora" type="time" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <button onclick="addProgramare()" style="background:#f1c40f; color:#1f2933; border:none; height:44px; padding:0 28px; border-radius:4px; font-family:'Fira Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">+ Adaugă programare</button>
+    </div>
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;">
+      <table style="width:100%; border-collapse:collapse; font-family:'Fira Sans',sans-serif; font-size:14px;">
+        <thead>
+          <tr style="background:#f1c40f;">
+            <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Nume</th>
+            <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">User</th>
+            <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Parolă</th>
+            <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Email</th>
+            <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Data</th>
+            <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Ora</th>
+            <th style="padding:12px 14px; text-align:left; color:#1f2933; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Acțiuni</th>
+          </tr>
+        </thead>
+        <tbody id="programariTableBody"></tbody>
+      </table>
+      <div id="programariEmpty" style="padding:28px; text-align:center; color:#94a3b8; font-size:14px;">Nicio programare adăugată încă.</div>
+    </div>
+
+  </main>
+</div>
+
 <script>
   // ── PASSWORD ──────────────────────────────────────────────
   (function() {
@@ -3755,7 +3852,129 @@ window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
     document.querySelector('.tab-btn.' + tab).classList.add('active');
+    applyTabColors();
   }
+
+  // ── CULOARE PER TAB (selectabilă, salvată local) ────────────
+  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', programari: '#f1c40f' };
+
+  function getTabColors() {
+    try {
+      return Object.assign({}, DEFAULT_TAB_COLORS, JSON.parse(localStorage.getItem('tabColors') || '{}'));
+    } catch (e) {
+      return Object.assign({}, DEFAULT_TAB_COLORS);
+    }
+  }
+
+  function setTabColor(tab, color) {
+    const colors = getTabColors();
+    colors[tab] = color;
+    localStorage.setItem('tabColors', JSON.stringify(colors));
+    applyTabColors();
+  }
+
+  function getContrastTextColor(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const r = parseInt(hex.substr(0, 2), 16), g = parseInt(hex.substr(2, 2), 16), b = parseInt(hex.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? '#1f2933' : '#ffffff';
+  }
+
+  function applyTabColors() {
+    const colors = getTabColors();
+    Object.keys(colors).forEach(function (tab) {
+      const btn = document.getElementById('tabbtn-' + tab);
+      const picker = document.getElementById('color-' + tab);
+      if (!btn) return;
+      if (picker) picker.value = colors[tab];
+      if (btn.classList.contains('active')) {
+        btn.style.background = colors[tab];
+        btn.style.color = getContrastTextColor(colors[tab]);
+        btn.style.borderBottomColor = '#fff';
+      } else {
+        btn.style.background = '#111';
+        btn.style.color = '#aaa';
+        btn.style.borderBottomColor = 'transparent';
+      }
+    });
+  }
+
+  // ── LISTA PROGRAMĂRI ─────────────────────────────────────────
+  function loadProgramari() {
+    try { return JSON.parse(localStorage.getItem('programari') || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function saveProgramari(list) {
+    localStorage.setItem('programari', JSON.stringify(list));
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function renderProgramari() {
+    const list = loadProgramari();
+    const tbody = document.getElementById('programariTableBody');
+    const empty = document.getElementById('programariEmpty');
+    tbody.innerHTML = '';
+    if (list.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    list.forEach(function (p, i) {
+      const tr = document.createElement('tr');
+      tr.style.borderTop = '1px solid #e2e8f0';
+      tr.innerHTML =
+        '<td style="padding:10px 14px;">' + escapeHtml(p.nume) + '</td>' +
+        '<td style="padding:10px 14px;">' + escapeHtml(p.user) + '</td>' +
+        '<td style="padding:10px 14px; font-family:\'Fira Mono\',monospace;">' + escapeHtml(p.parola || '') + '</td>' +
+        '<td style="padding:10px 14px;">' + escapeHtml(p.email || '') + '</td>' +
+        '<td style="padding:10px 14px;">' + escapeHtml(p.data) + '</td>' +
+        '<td style="padding:10px 14px;">' + escapeHtml(p.ora) + '</td>' +
+        '<td style="padding:10px 14px;"><button onclick="deleteProgramare(' + i + ')" style="background:#fdecea;color:#c0392b;border:1px solid #f5c6c2;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;font-size:13px;">Șterge</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addProgramare() {
+    const nume = document.getElementById('prog_nume').value.trim();
+    const user = document.getElementById('prog_user').value.trim();
+    const parola = document.getElementById('prog_parola').value.trim();
+    const email = document.getElementById('prog_email').value.trim();
+    const data = document.getElementById('prog_data').value;
+    const ora = document.getElementById('prog_ora').value;
+    if (!nume || !user || !parola || !email || !data || !ora) {
+      alert('Completează toate câmpurile: Nume, User, Parolă, Email, Data, Ora.');
+      return;
+    }
+    const list = loadProgramari();
+    list.push({ nume: nume, user: user, parola: parola, email: email, data: data, ora: ora });
+    saveProgramari(list);
+    document.getElementById('prog_nume').value = '';
+    document.getElementById('prog_user').value = '';
+    document.getElementById('prog_parola').value = '';
+    document.getElementById('prog_email').value = '';
+    document.getElementById('prog_data').value = '';
+    document.getElementById('prog_ora').value = '';
+    renderProgramari();
+  }
+
+  function deleteProgramare(index) {
+    const list = loadProgramari();
+    list.splice(index, 1);
+    saveProgramari(list);
+    renderProgramari();
+  }
+
+  window.addEventListener('DOMContentLoaded', function () {
+    applyTabColors();
+    renderProgramari();
+  });
 </script>
 </body>
 </html>
