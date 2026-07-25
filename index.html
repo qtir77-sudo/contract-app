@@ -116,6 +116,24 @@
     }
     @media (max-width: 600px) {
       .orb-3d-container { width: 68px; height: 68px; bottom: 14px; right: 14px; }
+      .orb-3d-container-left { width: 68px; height: 68px; bottom: 14px; left: 14px; }
+    }
+    .orb-3d-container-left {
+      position: fixed;
+      bottom: 22px;
+      left: 22px;
+      width: 110px;
+      height: 110px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .orb-3d-sphere-red {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 28%, #ffffff 0%, #ffb0b0 14%, #e63946 48%, #7a0d1a 78%, #1a0405 100%);
+      box-shadow: 0 0 30px rgba(230,57,70,0.6), 0 0 70px rgba(230,57,70,0.32), inset -14px -14px 35px rgba(0,0,0,0.55);
+      animation: orbRotate 5s linear infinite;
     }
 
     /* ── TAB PANELS ── */
@@ -4197,6 +4215,13 @@ window.addEventListener('DOMContentLoaded', () => {
 <div class="orb-3d-container">
   <div class="orb-3d-float">
     <div class="orb-3d-sphere"></div>
+  </div>
+</div>
+
+<!-- ORB 3D ANIMAT (stânga jos) -->
+<div class="orb-3d-container-left">
+  <div class="orb-3d-float">
+    <div class="orb-3d-sphere-red"></div>
   </div>
 </div>
 
