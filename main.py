@@ -25,8 +25,11 @@ from completeaza_nhs import fill_nhs_letter, find_gps_overpass, VERSION as NHS_V
 print(f"[START] Contract v{CONTRACT_VERSION} | NHS v{NHS_VERSION}")
 
 # ── Stocare persistenta (Programari / Dosare) ──────────────────────────────
-DATA_DIR = DIR / "data"
-DATA_DIR.mkdir(exist_ok=True)
+# Daca exista un Railway Volume atasat, RAILWAY_VOLUME_MOUNT_PATH e setat automat
+# si scriem acolo (persistent la fiecare redeploy). Altfel, folosim un folder local.
+_volume_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
+DATA_DIR = Path(_volume_path) / "data" if _volume_path else DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_DATA_KEYS = {"programari", "dosare_complete", "dosare_neverificate"}
 
 
