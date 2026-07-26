@@ -24,6 +24,11 @@ from completeaza_nhs import fill_nhs_letter, find_gps_overpass, VERSION as NHS_V
 
 print(f"[START] Contract v{CONTRACT_VERSION} | NHS v{NHS_VERSION}")
 
+# ── Stocare persistenta (Programari / Dosare) ──────────────────────────────
+DATA_DIR = DIR / "data"
+DATA_DIR.mkdir(exist_ok=True)
+ALLOWED_DATA_KEYS = {"programari", "dosare_complete", "dosare_neverificate"}
+
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a): return
@@ -77,6 +82,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(500, json.dumps({"error": str(e)}).encode(), "application/json")
             return
 
+        # ── /data/<key>  (GET - citire liste persistente) ─────────────────────
+        if path.startswith("/data/"):
+            key = path[len("/data/"):]
+            if key not in ALLOWED_DATA_KEYS:
+                self._send(400, b"bad key", "text/plain"); return
+            fp = DATA_DIR / f"{key}.json"
+            body = fp.read_bytes() if fp.is_file() else b"[]"
+            self._send(200, body, "application/json; charset=utf-8")
+            return
+
         # ── Fisiere statice ───────────────────────────────────────────────────
         if path in ("", "/"):
             path = "/index.html"
@@ -110,6 +125,22 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length) if length else b"{}"
+
+        # ── /data/<key>  (POST - salvare liste persistente) ───────────────────
+        if path.startswith("/data/"):
+            key = path[len("/data/"):]
+            if key not in ALLOWED_DATA_KEYS:
+                self._send(400, b"bad key", "text/plain"); return
+            try:
+                data = json.loads(raw.decode("utf-8"))
+                if not isinstance(data, list):
+                    raise ValueError("expected list")
+            except Exception:
+                self._send(400, b"JSON invalid", "text/plain"); return
+            fp = DATA_DIR / f"{key}.json"
+            fp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            self._send(200, b'{"ok":true}', "application/json")
+            return
 
         # ── /generate (Contract) ─────────────────────────────────────────────
         if path == "/generate":

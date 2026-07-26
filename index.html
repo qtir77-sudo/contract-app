@@ -3921,6 +3921,9 @@ window.addEventListener('DOMContentLoaded', () => {
     </div>
 
     <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;">
+      <div style="display:flex; justify-content:flex-end; padding:12px 16px; border-bottom:1px solid #f0f0f0;">
+        <button onclick="stergeToateDosarele('complete')" style="background:#fdecea;color:#c0392b;border:1.5px solid #f5c6c2;padding:8px 18px;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;">🗑 Șterge tot</button>
+      </div>
       <table style="width:100%; border-collapse:collapse; font-family:'Fira Sans',sans-serif; font-size:14px;">
         <thead>
           <tr style="background:#27ae60;">
@@ -3975,6 +3978,9 @@ window.addEventListener('DOMContentLoaded', () => {
     </div>
 
     <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;">
+      <div style="display:flex; justify-content:flex-end; padding:12px 16px; border-bottom:1px solid #f0f0f0;">
+        <button onclick="stergeToateDosarele('neverificate')" style="background:#fdecea;color:#c0392b;border:1.5px solid #f5c6c2;padding:8px 18px;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;">🗑 Șterge tot</button>
+      </div>
       <table style="width:100%; border-collapse:collapse; font-family:'Fira Sans',sans-serif; font-size:14px;">
         <thead>
           <tr style="background:#e67e22;">
@@ -4070,15 +4076,33 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ── LISTA PROGRAMĂRI ─────────────────────────────────────────
-  function loadProgramari() {
-    try { return JSON.parse(localStorage.getItem('programari') || '[]'); }
-    catch (e) { return []; }
+  // ── STOCARE PE SERVER (comuna pe orice browser/dispozitiv) ────
+  async function apiLoad(key) {
+    try {
+      const res = await fetch('/data/' + key, { cache: 'no-store' });
+      if (!res.ok) throw new Error('status ' + res.status);
+      return await res.json();
+    } catch (e) {
+      // fallback local (ex: rulare fara server, testare offline)
+      try { return JSON.parse(localStorage.getItem(key) || '[]'); }
+      catch (e2) { return []; }
+    }
   }
 
-  function saveProgramari(list) {
-    localStorage.setItem('programari', JSON.stringify(list));
+  async function apiSave(key, list) {
+    try {
+      await fetch('/data/' + key, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(list)
+      });
+    } catch (e) { /* server indisponibil, ignoram */ }
+    try { localStorage.setItem(key, JSON.stringify(list)); } catch (e) { /* ignoram */ }
   }
+
+  // ── LISTA PROGRAMĂRI ─────────────────────────────────────────
+  function loadProgramari() { return apiLoad('programari'); }
+  function saveProgramari(list) { return apiSave('programari', list); }
 
   function escapeHtml(str) {
     const div = document.createElement('div');
@@ -4086,8 +4110,8 @@ window.addEventListener('DOMContentLoaded', () => {
     return div.innerHTML;
   }
 
-  function renderProgramari() {
-    const list = loadProgramari();
+  async function renderProgramari() {
+    const list = await loadProgramari();
     const tbody = document.getElementById('programariTableBody');
     const empty = document.getElementById('programariEmpty');
     tbody.innerHTML = '';
@@ -4112,7 +4136,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function addProgramare() {
+  async function addProgramare() {
     const nume = document.getElementById('prog_nume').value.trim();
     const user = document.getElementById('prog_user').value.trim();
     const parola = document.getElementById('prog_parola').value.trim();
@@ -4123,9 +4147,9 @@ window.addEventListener('DOMContentLoaded', () => {
       alert('Completează toate câmpurile: Nume, User, Parolă, Email, Data, Ora.');
       return;
     }
-    const list = loadProgramari();
+    const list = await loadProgramari();
     list.push({ nume: nume, user: user, parola: parola, email: email, data: data, ora: ora });
-    saveProgramari(list);
+    await saveProgramari(list);
     document.getElementById('prog_nume').value = '';
     document.getElementById('prog_user').value = '';
     document.getElementById('prog_parola').value = '';
@@ -4135,10 +4159,10 @@ window.addEventListener('DOMContentLoaded', () => {
     renderProgramari();
   }
 
-  function deleteProgramare(index) {
-    const list = loadProgramari();
+  async function deleteProgramare(index) {
+    const list = await loadProgramari();
     list.splice(index, 1);
-    saveProgramari(list);
+    await saveProgramari(list);
     renderProgramari();
   }
 
@@ -4150,17 +4174,11 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── DOSARE (Complete / Neverificate) ─────────────────────────
-  function loadDosare(kind) {
-    try { return JSON.parse(localStorage.getItem('dosare_' + kind) || '[]'); }
-    catch (e) { return []; }
-  }
+  function loadDosare(kind) { return apiLoad('dosare_' + kind); }
+  function saveDosare(kind, list) { return apiSave('dosare_' + kind, list); }
 
-  function saveDosare(kind, list) {
-    localStorage.setItem('dosare_' + kind, JSON.stringify(list));
-  }
-
-  function renderDosare(kind) {
-    const list = loadDosare(kind);
+  async function renderDosare(kind) {
+    const list = await loadDosare(kind);
     const tbody = document.getElementById(kind + 'DosareTableBody');
     const empty = document.getElementById(kind + 'DosareEmpty');
     if (!tbody || !empty) return;
@@ -4184,7 +4202,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function addDosar(kind) {
+  async function addDosar(kind) {
     const user = document.getElementById(kind + '_user').value.trim();
     const parola = document.getElementById(kind + '_parola').value.trim();
     const email = document.getElementById(kind + '_email').value.trim();
@@ -4193,9 +4211,9 @@ window.addEventListener('DOMContentLoaded', () => {
       alert('Completează toate câmpurile: User, Parolă, Email, Parolă Email.');
       return;
     }
-    const list = loadDosare(kind);
+    const list = await loadDosare(kind);
     list.push({ user: user, parola: parola, email: email, parolaEmail: parolaEmail });
-    saveDosare(kind, list);
+    await saveDosare(kind, list);
     document.getElementById(kind + '_user').value = '';
     document.getElementById(kind + '_parola').value = '';
     document.getElementById(kind + '_email').value = '';
@@ -4203,10 +4221,16 @@ window.addEventListener('DOMContentLoaded', () => {
     renderDosare(kind);
   }
 
-  function deleteDosar(kind, index) {
-    const list = loadDosare(kind);
+  async function deleteDosar(kind, index) {
+    const list = await loadDosare(kind);
     list.splice(index, 1);
-    saveDosare(kind, list);
+    await saveDosare(kind, list);
+    renderDosare(kind);
+  }
+
+  async function stergeToateDosarele(kind) {
+    if (!confirm('Sigur vrei să ștergi TOATE dosarele din acest tab? Nu se poate anula.')) return;
+    await saveDosare(kind, []);
     renderDosare(kind);
   }
 </script>
