@@ -336,6 +336,10 @@
     <button class="tab-btn neverificate" id="tabbtn-neverificate" onclick="switchTab('neverificate')">⚠️ Dosare Neverificate!</button>
     <input type="color" class="tab-color-picker" id="color-neverificate" value="#e67e22" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('neverificate', this.value)">
   </div>
+  <div class="tab-wrap">
+    <button class="tab-btn repayment" id="tabbtn-repayment" onclick="switchTab('repayment')">💷 Repayment Uc!</button>
+    <input type="color" class="tab-color-picker" id="color-repayment" value="#6c5ce7" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('repayment', this.value)">
+  </div>
 </div>
 
 <!-- CONTRACT PANEL -->
@@ -4069,6 +4073,62 @@ window.addEventListener('DOMContentLoaded', () => {
   </main>
 </div>
 
+<!-- REPAYMENT UC PANEL -->
+<div id="panel-repayment" class="tab-panel">
+  <header>
+    <h1>💷 Repayment Uc!</h1>
+    <p>Adaugă, editează direct în tabel și șterge rambursări</p>
+  </header>
+
+  <main style="max-width: 900px; margin: 0 auto; padding: 24px 20px 60px;">
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); padding:20px 24px; margin-bottom:20px; border-left:4px solid #6c5ce7;">
+      <h2 style="font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:#4a5568; font-weight:700; margin-bottom:16px;">Adaugă rambursare</h2>
+      <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:16px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">User</label>
+          <input id="repayment_user" type="text" placeholder="User" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Parolă</label>
+          <input id="repayment_parola" type="text" placeholder="Parolă" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Sumă</label>
+          <input id="repayment_suma" type="text" placeholder="ex: 250.00" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Data</label>
+          <input id="repayment_data" type="date" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <button onclick="addRepayment()" style="background:#6c5ce7; color:#fff; border:none; height:44px; padding:0 28px; border-radius:4px; font-family:'Fira Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">+ Adaugă</button>
+    </div>
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #f0f0f0;">
+        <span style="font-size:12px; color:#94a3b8;">✏️ Click pe orice câmp din tabel ca să-l editezi direct</span>
+        <button onclick="stergeToateRepayment()" style="background:#fdecea;color:#c0392b;border:1.5px solid #f5c6c2;padding:8px 18px;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;">🗑 Șterge tot</button>
+      </div>
+      <table style="width:100%; border-collapse:collapse; font-family:'Fira Sans',sans-serif; font-size:14px;">
+        <thead>
+          <tr style="background:#6c5ce7;">
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">#</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">User</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Parolă</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Sumă</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Data</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Acțiuni</th>
+          </tr>
+        </thead>
+        <tbody id="repaymentTableBody"></tbody>
+      </table>
+      <div id="repaymentEmpty" style="padding:28px; text-align:center; color:#94a3b8; font-size:14px;">Nicio rambursare adăugată încă.</div>
+    </div>
+
+  </main>
+</div>
+
 <script>
   // ── PASSWORD ──────────────────────────────────────────────
   (function() {
@@ -4101,7 +4161,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── CULOARE PER TAB (selectabilă, salvată local) ────────────
-  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', programari: '#f1c40f', complete: '#27ae60', neverificate: '#e67e22' };
+  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', programari: '#f1c40f', complete: '#27ae60', neverificate: '#e67e22', repayment: '#6c5ce7' };
 
   function getTabColors() {
     try {
@@ -4240,6 +4300,7 @@ window.addEventListener('DOMContentLoaded', () => {
     renderProgramari();
     renderDosare('complete');
     renderDosare('neverificate');
+    renderRepayment();
   });
 
   // ── DOSARE (Complete / Neverificate) ─────────────────────────
@@ -4301,6 +4362,79 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!confirm('Sigur vrei să ștergi TOATE dosarele din acest tab? Nu se poate anula.')) return;
     await saveDosare(kind, []);
     renderDosare(kind);
+  }
+
+  // ── REPAYMENT UC (tabel complet editabil) ─────────────────────
+  function loadRepayment() { return apiLoad('repayment_uc'); }
+  function saveRepayment(list) { return apiSave('repayment_uc', list); }
+
+  function inlineInputStyle() {
+    return 'width:100%; border:1px solid transparent; background:transparent; padding:6px 8px; border-radius:4px; font-family:\'Fira Sans\',sans-serif; font-size:14px; outline:none;';
+  }
+
+  async function renderRepayment() {
+    const list = await loadRepayment();
+    const tbody = document.getElementById('repaymentTableBody');
+    const empty = document.getElementById('repaymentEmpty');
+    if (!tbody || !empty) return;
+    tbody.innerHTML = '';
+    if (list.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    const inputStyle = inlineInputStyle();
+    list.forEach(function (r, i) {
+      const tr = document.createElement('tr');
+      tr.style.borderTop = '1px solid #e2e8f0';
+      tr.innerHTML =
+        '<td style="padding:6px 14px; color:#94a3b8; font-weight:600;">' + (i + 1) + '</td>' +
+        '<td style="padding:2px 6px;"><input type="text" value="' + escapeHtml(r.user || '') + '" onchange="updateRepaymentField(' + i + ',\'user\',this.value)" style="' + inputStyle + '"></td>' +
+        '<td style="padding:2px 6px;"><input type="text" value="' + escapeHtml(r.parola || '') + '" onchange="updateRepaymentField(' + i + ',\'parola\',this.value)" style="' + inputStyle + ' font-family:\'Fira Mono\',monospace;"></td>' +
+        '<td style="padding:2px 6px;"><input type="text" value="' + escapeHtml(r.suma || '') + '" onchange="updateRepaymentField(' + i + ',\'suma\',this.value)" style="' + inputStyle + '"></td>' +
+        '<td style="padding:2px 6px;"><input type="date" value="' + escapeHtml(r.data || '') + '" onchange="updateRepaymentField(' + i + ',\'data\',this.value)" style="' + inputStyle + '"></td>' +
+        '<td style="padding:6px 14px;"><button onclick="deleteRepayment(' + i + ')" style="background:#fdecea;color:#c0392b;border:1px solid #f5c6c2;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;font-size:13px;">Șterge</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function addRepayment() {
+    const user = document.getElementById('repayment_user').value.trim();
+    const parola = document.getElementById('repayment_parola').value.trim();
+    const suma = document.getElementById('repayment_suma').value.trim();
+    const data = document.getElementById('repayment_data').value;
+    if (!user || !parola || !suma || !data) {
+      alert('Completează toate câmpurile: User, Parolă, Sumă, Data.');
+      return;
+    }
+    const list = await loadRepayment();
+    list.push({ user: user, parola: parola, suma: suma, data: data });
+    await saveRepayment(list);
+    document.getElementById('repayment_user').value = '';
+    document.getElementById('repayment_parola').value = '';
+    document.getElementById('repayment_suma').value = '';
+    document.getElementById('repayment_data').value = '';
+    renderRepayment();
+  }
+
+  async function updateRepaymentField(index, field, value) {
+    const list = await loadRepayment();
+    if (!list[index]) return;
+    list[index][field] = value;
+    await saveRepayment(list);
+  }
+
+  async function deleteRepayment(index) {
+    const list = await loadRepayment();
+    list.splice(index, 1);
+    await saveRepayment(list);
+    renderRepayment();
+  }
+
+  async function stergeToateRepayment() {
+    if (!confirm('Sigur vrei să ștergi TOATE rambursările din acest tab? Nu se poate anula.')) return;
+    await saveRepayment([]);
+    renderRepayment();
   }
 </script>
 
