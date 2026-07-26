@@ -30,7 +30,7 @@ print(f"[START] Contract v{CONTRACT_VERSION} | NHS v{NHS_VERSION}")
 _volume_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
 DATA_DIR = Path(_volume_path) / "data" if _volume_path else DIR / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-ALLOWED_DATA_KEYS = {"programari", "dosare_complete", "dosare_neverificate", "repayment_uc"}
+ALLOWED_DATA_KEYS = {"programari", "dosare_complete", "dosare_neverificate", "repayment_uc", "lista_carduri"}
 
 
 class Handler(BaseHTTPRequestHandler):

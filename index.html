@@ -340,6 +340,10 @@
     <button class="tab-btn repayment" id="tabbtn-repayment" onclick="switchTab('repayment')">💷 Repayment Uc!</button>
     <input type="color" class="tab-color-picker" id="color-repayment" value="#6c5ce7" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('repayment', this.value)">
   </div>
+  <div class="tab-wrap">
+    <button class="tab-btn carduri" id="tabbtn-carduri" onclick="switchTab('carduri')">💳 Lista Carduri!</button>
+    <input type="color" class="tab-color-picker" id="color-carduri" value="#0d9488" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('carduri', this.value)">
+  </div>
 </div>
 
 <!-- CONTRACT PANEL -->
@@ -4129,6 +4133,69 @@ window.addEventListener('DOMContentLoaded', () => {
   </main>
 </div>
 
+<!-- LISTA CARDURI PANEL -->
+<div id="panel-carduri" class="tab-panel">
+  <header>
+    <h1>💳 Lista Carduri!</h1>
+    <p>Adaugă, editează direct în tabel și șterge carduri</p>
+  </header>
+
+  <main style="max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px;">
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); padding:20px 24px; margin-bottom:20px; border-left:4px solid #0d9488;">
+      <h2 style="font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:#4a5568; font-weight:700; margin-bottom:16px;">Adaugă card</h2>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:14px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">User</label>
+          <input id="card_user" type="text" placeholder="User" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Parolă</label>
+          <input id="card_parola" type="text" placeholder="Parolă" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Email</label>
+          <input id="card_email" type="email" placeholder="Email" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:16px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Sortcode</label>
+          <input id="card_sortcode" type="text" placeholder="ex: 12-34-56" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:12px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">Account Number</label>
+          <input id="card_accountNumber" type="text" placeholder="ex: 12345678" style="height:40px; border:1.5px solid #d0d9e2; border-radius:4px; padding:0 12px; font-family:'Fira Sans',sans-serif; font-size:14px; outline:none;">
+        </div>
+      </div>
+      <button onclick="addCard()" style="background:#0d9488; color:#fff; border:none; height:44px; padding:0 28px; border-radius:4px; font-family:'Fira Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">+ Adaugă card</button>
+    </div>
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #f0f0f0;">
+        <span style="font-size:12px; color:#94a3b8;">✏️ Click pe orice câmp din tabel ca să-l editezi direct</span>
+        <button onclick="stergeToateCarduri()" style="background:#fdecea;color:#c0392b;border:1.5px solid #f5c6c2;padding:8px 18px;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;">🗑 Șterge tot</button>
+      </div>
+      <table style="width:100%; border-collapse:collapse; font-family:'Fira Sans',sans-serif; font-size:14px;">
+        <thead>
+          <tr style="background:#0d9488;">
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">#</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">User</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Parolă</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Email</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Sortcode</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Account Number</th>
+            <th style="padding:12px 14px; text-align:left; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;">Acțiuni</th>
+          </tr>
+        </thead>
+        <tbody id="carduriTableBody"></tbody>
+      </table>
+      <div id="carduriEmpty" style="padding:28px; text-align:center; color:#94a3b8; font-size:14px;">Niciun card adăugat încă.</div>
+    </div>
+
+  </main>
+</div>
+
 <script>
   // ── PASSWORD ──────────────────────────────────────────────
   (function() {
@@ -4161,7 +4228,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── CULOARE PER TAB (selectabilă, salvată local) ────────────
-  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', programari: '#f1c40f', complete: '#27ae60', neverificate: '#e67e22', repayment: '#6c5ce7' };
+  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', programari: '#f1c40f', complete: '#27ae60', neverificate: '#e67e22', repayment: '#6c5ce7', carduri: '#0d9488' };
 
   function getTabColors() {
     try {
@@ -4301,6 +4368,7 @@ window.addEventListener('DOMContentLoaded', () => {
     renderDosare('complete');
     renderDosare('neverificate');
     renderRepayment();
+    renderCarduri();
   });
 
   // ── DOSARE (Complete / Neverificate) ─────────────────────────
@@ -4435,6 +4503,78 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!confirm('Sigur vrei să ștergi TOATE rambursările din acest tab? Nu se poate anula.')) return;
     await saveRepayment([]);
     renderRepayment();
+  }
+
+  // ── LISTA CARDURI (tabel complet editabil) ─────────────────────
+  function loadCarduri() { return apiLoad('lista_carduri'); }
+  function saveCarduri(list) { return apiSave('lista_carduri', list); }
+
+  async function renderCarduri() {
+    const list = await loadCarduri();
+    const tbody = document.getElementById('carduriTableBody');
+    const empty = document.getElementById('carduriEmpty');
+    if (!tbody || !empty) return;
+    tbody.innerHTML = '';
+    if (list.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    const inputStyle = inlineInputStyle();
+    list.forEach(function (c, i) {
+      const tr = document.createElement('tr');
+      tr.style.borderTop = '1px solid #e2e8f0';
+      tr.innerHTML =
+        '<td style="padding:6px 14px; color:#94a3b8; font-weight:600;">' + (i + 1) + '</td>' +
+        '<td style="padding:2px 6px;"><input type="text" value="' + escapeHtml(c.user || '') + '" onchange="updateCardField(' + i + ',\'user\',this.value)" style="' + inputStyle + '"></td>' +
+        '<td style="padding:2px 6px;"><input type="text" value="' + escapeHtml(c.parola || '') + '" onchange="updateCardField(' + i + ',\'parola\',this.value)" style="' + inputStyle + ' font-family:\'Fira Mono\',monospace;"></td>' +
+        '<td style="padding:2px 6px;"><input type="email" value="' + escapeHtml(c.email || '') + '" onchange="updateCardField(' + i + ',\'email\',this.value)" style="' + inputStyle + '"></td>' +
+        '<td style="padding:2px 6px;"><input type="text" value="' + escapeHtml(c.sortcode || '') + '" onchange="updateCardField(' + i + ',\'sortcode\',this.value)" style="' + inputStyle + ' font-family:\'Fira Mono\',monospace;"></td>' +
+        '<td style="padding:2px 6px;"><input type="text" value="' + escapeHtml(c.accountNumber || '') + '" onchange="updateCardField(' + i + ',\'accountNumber\',this.value)" style="' + inputStyle + ' font-family:\'Fira Mono\',monospace;"></td>' +
+        '<td style="padding:6px 14px;"><button onclick="deleteCard(' + i + ')" style="background:#fdecea;color:#c0392b;border:1px solid #f5c6c2;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;font-size:13px;">Șterge</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function addCard() {
+    const user = document.getElementById('card_user').value.trim();
+    const parola = document.getElementById('card_parola').value.trim();
+    const email = document.getElementById('card_email').value.trim();
+    const sortcode = document.getElementById('card_sortcode').value.trim();
+    const accountNumber = document.getElementById('card_accountNumber').value.trim();
+    if (!user || !parola || !email || !sortcode || !accountNumber) {
+      alert('Completează toate câmpurile: User, Parolă, Email, Sortcode, Account Number.');
+      return;
+    }
+    const list = await loadCarduri();
+    list.push({ user: user, parola: parola, email: email, sortcode: sortcode, accountNumber: accountNumber });
+    await saveCarduri(list);
+    document.getElementById('card_user').value = '';
+    document.getElementById('card_parola').value = '';
+    document.getElementById('card_email').value = '';
+    document.getElementById('card_sortcode').value = '';
+    document.getElementById('card_accountNumber').value = '';
+    renderCarduri();
+  }
+
+  async function updateCardField(index, field, value) {
+    const list = await loadCarduri();
+    if (!list[index]) return;
+    list[index][field] = value;
+    await saveCarduri(list);
+  }
+
+  async function deleteCard(index) {
+    const list = await loadCarduri();
+    list.splice(index, 1);
+    await saveCarduri(list);
+    renderCarduri();
+  }
+
+  async function stergeToateCarduri() {
+    if (!confirm('Sigur vrei să ștergi TOATE cardurile din acest tab? Nu se poate anula.')) return;
+    await saveCarduri([]);
+    renderCarduri();
   }
 </script>
 
