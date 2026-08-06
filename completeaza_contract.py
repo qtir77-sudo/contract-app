@@ -484,9 +484,41 @@ def _append_british_gas(doc, data):
             c = span.get("color", 0)
             return ((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255)
 
-        def _span_font(span):
+        _custom_font_cache = {}
+
+        def _span_font(page, span):
+            """Incearca sa extraga si sa re-foloseasca fontul EXACT din PDF (span['font'], ex:
+            'ABCDEE+GTWalsheimPro-Bold'), ca textul nou sa arate identic cu cel original - nu
+            aproximat cu Helvetica generic. Daca fontul nu poate fi extras (nu e embedded complet,
+            sau alt motiv), cade inapoi pe Helvetica bold/normal, ca sa nu crape generarea."""
+            fname = span.get("font", "")
             flags = span.get("flags", 0)
-            return "hebo" if (flags & 16) else "helv"  # bold vs normal Helvetica
+            fallback = "hebo" if (flags & 16) else "helv"
+            if not fname:
+                return fallback
+
+            cache_key = (id(page), fname)
+            if cache_key in _custom_font_cache:
+                return _custom_font_cache[cache_key] or fallback
+
+            alias = None
+            try:
+                short_name = fname.split("+")[-1]  # scoate prefixul de subset, ex "ABCDEE+"
+                for f in page.get_fonts(full=True):
+                    xref, ext, ftype, basefont = f[0], f[1], f[2], f[3]
+                    if basefont == fname or basefont.split("+")[-1] == short_name:
+                        extracted = page.parent.extract_font(xref)
+                        fontbuffer = extracted[-1] if extracted else None
+                        if fontbuffer:
+                            alias = f"custfont{len(_custom_font_cache)}"
+                            page.insert_font(fontname=alias, fontbuffer=fontbuffer)
+                        break
+            except Exception as e:
+                print(f"[BRITISH GAS] Nu am putut extrage fontul original '{fname}': {e}")
+                alias = None
+
+            _custom_font_cache[cache_key] = alias
+            return alias or fallback
 
         def _update_wrapped_balance_date(label, must_include, must_exclude, date_str):
             """Cauta blocul care contine toate cuvintele din must_include si niciunul din
@@ -531,7 +563,7 @@ def _append_british_gas(doc, data):
                 fx0, fy0, fx1, fy1 = f_span["bbox"]
                 fsize = f_span.get("size", 12)
                 fcolor = _span_color(f_span)
-                ffont = _span_font(f_span)
+                ffont = _span_font(pg, f_span)
                 pg.add_redact_annot(fitz.Rect(fx0 - 1, fy0 - 1, fx1 + 1, fy1 + 1), fill=(1, 1, 1))
                 pg.apply_redactions()
                 baseline_y = fy1 - (fy1 - fy0) * 0.22
@@ -545,7 +577,7 @@ def _append_british_gas(doc, data):
                 dx0, dy0, dx1, dy1 = d_span["bbox"]
                 dsize = d_span.get("size", 12)
                 dcolor = _span_color(d_span)
-                dfont = _span_font(d_span)
+                dfont = _span_font(pg, d_span)
                 pg.add_redact_annot(fitz.Rect(dx0 - 1, dy0 - 1, dx1 + 1, dy1 + 1), fill=(1, 1, 1))
                 pg.apply_redactions()
                 new_day_line_text = re.sub(r"\d{1,2}\s*$", new_day, "".join(s["text"] for s in day_line["spans"]).strip())
@@ -560,7 +592,7 @@ def _append_british_gas(doc, data):
                 mx0, my0, mx1, my1 = m_span["bbox"]
                 msize = m_span.get("size", 12)
                 mcolor = _span_color(m_span)
-                mfont = _span_font(m_span)
+                mfont = _span_font(pg, m_span)
                 pg.add_redact_annot(fitz.Rect(mx0 - 1, my0 - 1, mx1 + 1, my1 + 1), fill=(1, 1, 1))
                 pg.apply_redactions()
                 pg.insert_text((mx0, my1 - (my1 - my0) * 0.22), f"{new_month} {new_year}",
@@ -590,7 +622,7 @@ def _append_british_gas(doc, data):
                         ly1 = max(s["bbox"][3] for s in ln["spans"])
                         lsize = ln["spans"][0].get("size", 11)
                         lcolor = _span_color(ln["spans"][0])
-                        lfont = _span_font(ln["spans"][0])
+                        lfont = _span_font(page, ln["spans"][0])
                         new_line_text = re.sub(r"\d{1,2}\s+[A-Za-z]+\s+\d{4}", date_str, ltxt)
                         page.add_redact_annot(fitz.Rect(lx0 - 1, ly0 - 1, lx1 + 1, ly1 + 1), fill=(1, 1, 1))
                         page.apply_redactions()
@@ -643,7 +675,7 @@ def _append_british_gas(doc, data):
                             ay1 = max(s["bbox"][3] for s in affected)
                             asize = affected[0].get("size", 11)
                             acolor = _span_color(affected[0])
-                            afont = _span_font(affected[0])
+                            afont = _span_font(page, affected[0])
                             page.add_redact_annot(fitz.Rect(ax0 - 1, ay0 - 1, ax1 + 1, ay1 + 1), fill=(1, 1, 1))
                             page.apply_redactions()
                             baseline_y = ay1 - (ay1 - ay0) * 0.22
