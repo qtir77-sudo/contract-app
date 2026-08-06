@@ -475,6 +475,80 @@ def _append_british_gas(doc, data):
             else:
                 print("[BRITISH GAS] Nu am gasit linia 'Statement date:' pe pagina statement-ului")
 
+        # Actualizeaza automat "Your opening balance on <data>" cu aceeasi data de start
+        # (start_str) folosita si la Covering / Rent Receipt. Acest text e scris pe mai multe
+        # randuri (paragraf ingust, ex: "Your opening" / "balance on 01" / "March 2026"), deci
+        # gasim exact liniile cu ziua si cu luna+anul si le inlocuim pastrand fontul/culoarea
+        # originale (albastru, bold) - nu punem culoare neagra ca la celelalte campuri.
+        if start_str:
+            try:
+                new_day, new_month, new_year = start_str.split(" ")  # "01", "March", "2026"
+            except Exception:
+                new_day = new_month = new_year = None
+
+            if new_day:
+                def _span_color(span):
+                    c = span.get("color", 0)
+                    return ((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255)
+
+                def _span_font(span):
+                    flags = span.get("flags", 0)
+                    return "hebo" if (flags & 16) else "helv"  # bold vs normal Helvetica
+
+                # Gaseste blocul care contine "opening" + "balance" (distinct de "new balance")
+                opening_lines = None
+                for block in pg.get_text("dict")["blocks"]:
+                    if block.get("type") != 0:
+                        continue
+                    block_text = " ".join("".join(s["text"] for s in ln["spans"]) for ln in block["lines"]).lower()
+                    if "opening" in block_text and "balance" in block_text:
+                        opening_lines = block["lines"]
+                        break
+
+                if opening_lines:
+                    day_line = None
+                    month_line = None
+                    for ln in opening_lines:
+                        ltxt = "".join(s["text"] for s in ln["spans"])
+                        if re.search(r"\bon\s+\d{1,2}\b\s*$", ltxt.strip(), re.IGNORECASE):
+                            day_line = ln
+                        elif re.fullmatch(r"[A-Za-z]+\s+\d{4}", ltxt.strip()):
+                            month_line = ln
+
+                    if day_line:
+                        d_span = day_line["spans"][-1]
+                        dx0, dy0, dx1, dy1 = d_span["bbox"]
+                        dsize = d_span.get("size", 12)
+                        dcolor = _span_color(d_span)
+                        dfont = _span_font(d_span)
+                        # pastreaza "on " (eticheta), redacteaza doar zona zilei (aprox ultimele
+                        # caractere ale liniei); refolosim tot bbox-ul liniei ca sa fim siguri ca
+                        # acoperim vechea zi complet, apoi rescriem "on <ziua>" intreg.
+                        pg.add_redact_annot(fitz.Rect(dx0 - 1, dy0 - 1, dx1 + 1, dy1 + 1), fill=(1, 1, 1))
+                        pg.apply_redactions()
+                        new_day_line_text = re.sub(r"\d{1,2}\s*$", new_day, "".join(s["text"] for s in day_line["spans"]).strip())
+                        baseline_y = dy1 - (dy1 - dy0) * 0.22
+                        pg.insert_text((dx0, baseline_y), new_day_line_text, fontsize=dsize, fontname=dfont, color=dcolor)
+                        print(f"[BRITISH GAS] Opening balance - zi actualizata: {new_day_line_text}")
+                    else:
+                        print("[BRITISH GAS] Nu am gasit linia cu ziua pentru 'Your opening balance on'")
+
+                    if month_line and new_month and new_year:
+                        m_span = month_line["spans"][0]
+                        mx0, my0, mx1, my1 = m_span["bbox"]
+                        msize = m_span.get("size", 12)
+                        mcolor = _span_color(m_span)
+                        mfont = _span_font(m_span)
+                        pg.add_redact_annot(fitz.Rect(mx0 - 1, my0 - 1, mx1 + 1, my1 + 1), fill=(1, 1, 1))
+                        pg.apply_redactions()
+                        pg.insert_text((mx0, my1 - (my1 - my0) * 0.22), f"{new_month} {new_year}",
+                                        fontsize=msize, fontname=mfont, color=mcolor)
+                        print(f"[BRITISH GAS] Opening balance - luna/an actualizate: {new_month} {new_year}")
+                    else:
+                        print("[BRITISH GAS] Nu am gasit linia cu luna/anul pentru 'Your opening balance on'")
+                else:
+                    print("[BRITISH GAS] Nu am gasit blocul 'Your opening balance on'")
+
     print(f"[BRITISH GAS] OK | font={'Arial' if fontfile else 'helv'} {RS}pt | '{tenant}'")
 
 
