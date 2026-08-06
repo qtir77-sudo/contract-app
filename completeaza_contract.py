@@ -100,17 +100,19 @@ def _make_logo_jpeg(display_name: str) -> bytes:
     img.save(buf, "JPEG", quality=95)
     return buf.getvalue()
 
-def _replace_logo_in_pdf(pdf_bytes: bytes, agent_display_name: str, logo_jpeg: bytes | None = None) -> bytes:
-    """Inlocuieste /FXX3 in ultima pagina a PDF-ului cu logo-ul agentului."""
+def _replace_logo_in_pdf(pdf_bytes: bytes, agent_display_name: str, logo_jpeg: bytes | None = None, page_index: int = -1) -> bytes:
+    """Inlocuieste imaginea logo dintr-o pagina a PDF-ului cu logo-ul agentului.
+    page_index: -1 = ultima pagina (comportament vechi). Pentru o pagina anume,
+    foloseste indexul 0-based (ex: pagina 13 -> page_index=12)."""
     import pikepdf as _pk
     if logo_jpeg is None:
         logo_jpeg = _make_logo_jpeg(agent_display_name)
-    print(f"[LOGO] Inlocuiesc logo pentru '{agent_display_name}': {len(logo_jpeg)} bytes")
+    print(f"[LOGO] Inlocuiesc logo (pagina index {page_index}) pentru '{agent_display_name}': {len(logo_jpeg)} bytes")
     pk = _pk.open(io.BytesIO(pdf_bytes))
-    page = pk.pages[-1]
+    page = pk.pages[page_index]
     xobj = page["/Resources"]["/XObject"]
     keys = list(xobj.keys())
-    print(f"[LOGO] XObjects in ultima pagina: {keys}")
+    print(f"[LOGO] XObjects in pagina index {page_index}: {keys}")
     target = None
     for k in keys:
         try:
@@ -617,7 +619,16 @@ def fill_contract(data: dict) -> bytes:
         pdf_bytes  = _replace_logo_in_pdf(pdf_bytes, "", white_jpeg)
     except Exception as e:
         import traceback
-        print(f"[LOGO] EROARE sterge logo: {e}")
+        print(f"[LOGO] EROARE sterge logo (ultima pagina): {e}")
+        traceback.print_exc()
+
+    # ── STEP 3: pikepdf sterge logo Howkins Harrison din pagina 13 (Rent Receipt, alb) ──
+    try:
+        white_jpeg = _make_white_jpeg()
+        pdf_bytes  = _replace_logo_in_pdf(pdf_bytes, "", white_jpeg, page_index=12)
+    except Exception as e:
+        import traceback
+        print(f"[LOGO] EROARE sterge logo pagina 13: {e}")
         traceback.print_exc()
 
     return pdf_bytes
