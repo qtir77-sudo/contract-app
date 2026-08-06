@@ -437,13 +437,22 @@ def _replace_wrapped_date(pg, label_substr, new_date_str):
         for line in block["lines"]:
             all_lines.append(line["spans"])
 
-    # Gaseste linia care contine eticheta
+    # Gaseste linia care contine eticheta. Verificam si pe o fereastra de 2 linii
+    # consecutive (unite cu spatiu), pentru ca eticheta insasi poate fi impartita
+    # pe 2 linii din cauza wrap-ului (ex: "Your opening" / "balance on 01" - "opening
+    # balance" nu apare intreg pe nicio linie individuala, dar apare in fereastra).
     label_idx = None
     for i, spans in enumerate(all_lines):
         line_text = "".join(s["text"] for s in spans).lower()
         if label_substr.lower() in line_text:
             label_idx = i
             break
+        if i + 1 < len(all_lines):
+            next_text = "".join(s["text"] for s in all_lines[i + 1]).lower()
+            window_text = f"{line_text} {next_text}"
+            if label_substr.lower() in window_text:
+                label_idx = i
+                break
     if label_idx is None:
         print(f"[BRITISH GAS] Nu am gasit eticheta '{label_substr}'")
         return False
