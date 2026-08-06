@@ -131,7 +131,8 @@ def fill_nhs_letter(data: dict) -> bytes:
     _redact(page, 45, 370, 200, 388)
 
     # 8. MERGE CU BRITISH GAS - salveaza NHS pe disk temp, combina cu fitz
-    if PDF_ANNEX.is_file():
+    ATTACH_ANNEX = False  # dezactivat: se returneaza doar cele 2 pagini NHS
+    if ATTACH_ANNEX and PDF_ANNEX.is_file():
         # Salveaza NHS pe disk temp
         tmp_nhs = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         tmp_nhs.close()
