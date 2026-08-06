@@ -315,47 +315,96 @@ def _split_uk_address(addr: str) -> list[str]:
 
 
 def _replace_period_range(pg, start_dt, end_dt):
-    """Cauta pe pagina liniile/span-urile care contin un interval de forma
+    """Cauta pe pagina liniile care contin un interval de forma
     'DD Mon [YY|YYYY] - DD Mon YY|YYYY' (ex: perioada de facturare gaz) si
-    inlocuieste ambele date cu perioada calculata (start_dt -> end_dt),
-    pastrand formatul de cifre al anului (2 sau 4 cifre) si stilul numelui
-    lunii (abreviat sau intreg) exact ca in original, plus separatorul original."""
+    inlocuieste ambele date cu perioada calculata (start_dt -> end_dt), pastrand
+    formatul de cifre al anului (2 sau 4 cifre) si stilul numelui lunii (abreviat
+    sau intreg) ca in original. Cauta pe TEXTUL INTREG AL LINIEI (nu doar intr-un
+    span izolat), pentru ca cele doua date pot fi impartite pe mai multe span-uri
+    din cauza formatarii interne a PDF-ului (la fel ca la 'opening balance') -
+    apoi mapeaza fiecare token (zi/luna/an) inapoi la span-ul lui exact pentru
+    inlocuire, ca sa nu strice restul textului din acea linie."""
+    month_full = ["January", "February", "March", "April", "May", "June", "July",
+                  "August", "September", "October", "November", "December"]
+    month_alt = "|".join(month_full) + "|" + "|".join(m[:3] for m in month_full)
+    dash_class = r"[-\u2010\u2011\u2012\u2013\u2014\u2015]"
     pattern = re.compile(
-        r'(\d{1,2})\s+([A-Za-z]{3,9})\s*(\d{2,4})?\s*(-)\s*'
-        r'(\d{1,2})\s+([A-Za-z]{3,9})\s*(\d{2,4})'
+        r'(\d{1,2})\s+(' + month_alt + r')\s*(\d{2,4})?\s*' + dash_class + r'\s*'
+        r'(\d{1,2})\s+(' + month_alt + r')\s*(\d{2,4})',
+        re.IGNORECASE,
     )
     updated = 0
     for block in pg.get_text("dict")["blocks"]:
         if block.get("type") != 0:
             continue
         for line in block["lines"]:
-            for s in line["spans"]:
-                txt = s["text"]
-                m = pattern.search(txt)
-                if not m:
-                    continue
-                day1, mon1, yr1, sep, day2, mon2, yr2 = m.groups()
+            spans = line["spans"]
+            if not spans:
+                continue
+            offsets = []
+            pos = 0
+            for s in spans:
+                t = s["text"]
+                offsets.append((pos, pos + len(t), s))
+                pos += len(t)
+            line_text = "".join(s["text"] for s in spans)
+            m = pattern.search(line_text)
+            if not m:
+                continue
 
-                new_day1 = f"{start_dt.day:02d}"
-                new_mon1 = start_dt.strftime("%B") if len(mon1) > 3 else start_dt.strftime("%b")
-                new_yr1  = (start_dt.strftime("%y") if len(yr1) == 2 else start_dt.strftime("%Y")) if yr1 else ""
-                new_day2 = f"{end_dt.day:02d}"
-                new_mon2 = end_dt.strftime("%B") if len(mon2) > 3 else end_dt.strftime("%b")
-                new_yr2  = end_dt.strftime("%y") if len(yr2) == 2 else end_dt.strftime("%Y")
+            day1, mon1, yr1, day2, mon2, yr2 = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5), m.group(6)
+            new_day1 = f"{start_dt.day:02d}"
+            new_mon1 = start_dt.strftime("%B") if len(mon1) > 3 else start_dt.strftime("%b")
+            new_yr1  = (start_dt.strftime("%y") if len(yr1) == 2 else start_dt.strftime("%Y")) if yr1 else None
+            new_day2 = f"{end_dt.day:02d}"
+            new_mon2 = end_dt.strftime("%B") if len(mon2) > 3 else end_dt.strftime("%b")
+            new_yr2  = end_dt.strftime("%y") if len(yr2) == 2 else end_dt.strftime("%Y")
 
-                part1 = f"{new_day1} {new_mon1}" + (f" {new_yr1}" if new_yr1 else "")
-                part2 = f"{new_day2} {new_mon2} {new_yr2}"
-                new_value = f"{part1}{sep} {part2}"
-                new_txt = txt[:m.start()] + new_value + txt[m.end():]
+            token_spans = [(m.span(1), new_day1), (m.span(2), new_mon1)]
+            if yr1:
+                token_spans.append((m.span(3), new_yr1))
+            token_spans += [(m.span(4), new_day2), (m.span(5), new_mon2), (m.span(6), new_yr2)]
 
-                x0, y0, x1, y1 = s["bbox"]
+            span_edits = {}
+            ok = True
+            for (tok_start, tok_end), new_val in token_spans:
+                owner = None
+                for (sp_start, sp_end, sp) in offsets:
+                    if tok_start >= sp_start and tok_end <= sp_end:
+                        owner = (sp_start, sp)
+                        break
+                if owner is None:
+                    ok = False
+                    break
+                sp_start, sp = owner
+                key = id(sp)
+                span_edits.setdefault(key, {"span": sp, "edits": []})
+                span_edits[key]["edits"].append((tok_start - sp_start, tok_end - sp_start, new_val))
+            if not ok:
+                print("[BRITISH GAS] Interval perioada: un token traverseaza granita a 2 span-uri, sar peste (caz rar)")
+                continue
+
+            new_texts = {}
+            for key, info in span_edits.items():
+                sp = info["span"]
+                txt = sp["text"]
+                for (ls, le, nv) in sorted(info["edits"], key=lambda e: e[0], reverse=True):
+                    txt = txt[:ls] + nv + txt[le:]
+                new_texts[key] = (sp, txt)
+
+            for key, (sp, _new_txt) in new_texts.items():
+                x0, y0, x1, y1 = sp["bbox"]
                 pg.add_redact_annot(fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1), fill=(1, 1, 1))
-                pg.apply_redactions()
-                size = s.get("size", 9)
+            pg.apply_redactions()
+            for key, (sp, new_txt) in new_texts.items():
+                x0, y0, x1, y1 = sp["bbox"]
+                size = sp.get("size", 9)
                 baseline_y = y1 - (y1 - y0) * 0.22
                 pg.insert_text((x0, baseline_y), new_txt, fontsize=size, fontname="helv", color=(0, 0, 0))
-                updated += 1
-                print(f"[BRITISH GAS] Interval perioada actualizat: '{txt}' -> '{new_txt}'")
+
+            updated += 1
+            print(f"[BRITISH GAS] Interval perioada actualizat: '{line_text[m.start():m.end()]}' -> "
+                  f"{new_day1} {new_mon1}" + (f" {new_yr1}" if new_yr1 else "") + f" - {new_day2} {new_mon2} {new_yr2}")
     return updated
 
 
