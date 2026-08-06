@@ -4,7 +4,7 @@ a circumstantelor familiale (Universal Credit Claim), pornind de la template-ul
 Social_Service_Care.pdf. Foloseste cautare dinamica de text (ancore), nu
 coordonate fixe ghicite - la fel ca celelalte scripturi din proiect."""
 from __future__ import annotations
-import json, sys, os
+import json, sys, os, re
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -105,12 +105,41 @@ def _replace_whole_line(page, lines, anchor, new_text, bold=None):
     return False
 
 
+def _remove_background_watermark(doc, page):
+    """Scoate stema regala mare, semi-transparenta, desenata pe fundalul paginii (XObject
+    afisat printr-un graphic state de opacitate redusa, /FXE1 ~12%). NU atinge mica stema
+    vizibila normal din subsol (langa logo-ul Investors in People) - aceea e element de
+    design la opacitate normala, nu watermark, si ramane neschimbata.
+    Editeaza direct stream-ul de continut al paginii (cauta tiparul "/FXE1 gs q ... Do Q"),
+    fara sa umble la alte elemente din pagina."""
+    try:
+        xrefs = page.get_contents()
+        if not xrefs:
+            return False
+        content = b"".join(doc.xref_stream(x) for x in xrefs)
+        pattern = re.compile(rb"/FXE1\s+gs\s+q[^Q]*?Do\s+Q")
+        new_content, n = pattern.subn(b"", content, count=1)
+        if n == 0:
+            print("[SOCIAL] Nu am gasit watermark-ul (stema) de eliminat pe fundal")
+            return False
+        doc.update_stream(xrefs[0], new_content)
+        for extra in xrefs[1:]:
+            doc.update_stream(extra, b"")
+        print("[SOCIAL] Watermark (stema) eliminat din fundal")
+        return True
+    except Exception as e:
+        print(f"[SOCIAL] Eroare la eliminarea watermark-ului (ignorata, PDF-ul continua normal): {e}")
+        return False
+
+
 def fill_social_letter(data: dict) -> bytes:
     if not PDF_SOURCE.is_file():
         raise FileNotFoundError(f"Nu gasesc PDF-ul sursa: {PDF_SOURCE}")
 
     doc = fitz.open(PDF_SOURCE)
     pg = doc[0]
+
+    _remove_background_watermark(doc, pg)
 
     carer_name  = (data.get("carer_name") or "").strip()
     carer_dob   = (data.get("carer_dob") or "").strip()
