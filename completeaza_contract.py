@@ -564,12 +564,16 @@ def _append_electricity_bill(doc, data):
         return None
 
     # PAS 1: gaseste TOATE liniile-tinta (pe textul original, neatins) inainte de orice redactare
-    targets = []  # [((x0,y0,x1,y1,fs), text_nou), ...]
+    # Nume+adresa stau intr-un bloc separat (in coltul stang, randuri lipite) de "Bill date:"
+    # (care e sus, in alt colt al paginii) -> le tinem in liste separate, ca sa nu le amestecam
+    # intr-o singura redactare care ar acoperi gresit tot spatiul dintre ele.
+    addr_targets = []   # [((x0,y0,x1,y1,fs), text_nou), ...] - nume + linii adresa
+    bill_date_target = None  # ((x0,y0,x1,y1,fs), text_nou) sau None
 
     if tenant:
         b = _line_bbox(pg, "Nicolaie")
         if b:
-            targets.append((b, tenant))
+            addr_targets.append((b, tenant))
         else:
             print("[ELECTRICITY BILL] Nu am gasit linia numelui (ancora 'Nicolaie')")
 
@@ -584,7 +588,7 @@ def _append_electricity_bill(doc, data):
             # Daca adresa are mai putine linii decat template-ul, liniile ramase se golesc
             # (nu lasam textul vechi/gresit, ex: "LA1 3DH" ramas dintr-o adresa diferita)
             new_text = parts[i] if i < len(parts) else ""
-            targets.append((b, new_text))
+            addr_targets.append((b, new_text))
 
     # "Bill date:" — calculat automat pe baza commencement_date (aceeasi data folosita si la Covering/Statement date)
     comm = (data.get("commencement_date") or "").strip()
@@ -619,27 +623,50 @@ def _append_electricity_bill(doc, data):
                     vx1 = max(s["bbox"][2] for s in value_spans)
                     vy1 = max(s["bbox"][3] for s in value_spans)
                     vsize = value_spans[0].get("size", 9)
-                    targets.append(((vx0, vy0, vx1, vy1, vsize), bill_date_str))
+                    bill_date_target = ((vx0, vy0, vx1, vy1, vsize), bill_date_str)
                 else:
                     print("[ELECTRICITY BILL] 'Bill date:' gasit dar fara valoare de inlocuit")
             else:
                 print("[ELECTRICITY BILL] Nu am gasit linia 'Bill date:'")
 
-    # PAS 2: redacteaza TOATE liniile dintr-o singura trecere (padding minim, liniile sunt lipite)
-    PAD = 0.3
-    for (x0, y0, x1, y1, fs), _ in targets:
+    # PAS 2: redacteaza.
+    # (a) Blocul nume+adresa (randuri lipite in coltul stang) se sterge dintr-un SINGUR dreptunghi
+    #     generos care acopera tot blocul - la fel ca la British Gas - ca sa nu ramana resturi/glife
+    #     izolate (ex: un caracter singuratic ramas intre randuri) nedetectate de anchore.
+    # (b) "Bill date:" e o linie izolata, in alt colt al paginii -> redactare separata, fina.
+    BLOCK_PAD_X = 4       # extra pe orizontala, ca sa acopere toata latimea blocului
+    BLOCK_PAD_TOP = 2
+    BLOCK_PAD_BOTTOM = 6  # extra generos jos, ca sa "inghita" orice rest intre bloc si textul urmator
+    PAD = 0.3             # padding fin pentru Bill date (linie separata)
+
+    if addr_targets:
+        bx0 = min(t[0][0] for t in addr_targets) - BLOCK_PAD_X
+        by0 = min(t[0][1] for t in addr_targets) - BLOCK_PAD_TOP
+        bx1 = max(t[0][2] for t in addr_targets) + BLOCK_PAD_X
+        by1 = max(t[0][3] for t in addr_targets) + BLOCK_PAD_BOTTOM
+        pg.add_redact_annot(fitz.Rect(bx0, by0, bx1, by1), fill=(1, 1, 1))
+
+    if bill_date_target:
+        (x0, y0, x1, y1, fs), _ = bill_date_target
         pg.add_redact_annot(fitz.Rect(x0 - PAD, y0 - PAD, x1 + PAD, y1 + PAD), fill=(1, 1, 1))
-    if targets:
+
+    if addr_targets or bill_date_target:
         pg.apply_redactions()
 
     # PAS 3: abia acum scrie tot textul nou (dupa ce toate redactarile au fost deja aplicate)
-    for (x0, y0, x1, y1, fs), new_text in targets:
+    all_targets = list(addr_targets)
+    if bill_date_target:
+        all_targets.append(bill_date_target)
+
+    for (x0, y0, x1, y1, fs), new_text in all_targets:
         if not new_text:
             continue
         baseline_y = y1 - (y1 - y0) * 0.22
         pg.insert_text((x0, baseline_y), new_text, fontsize=fs, fontname="helv", color=(0, 0, 0))
 
-    print(f"[ELECTRICITY BILL] OK | '{tenant}' | pagini adaugate={bill_page_count} | linii inlocuite={len(targets)}")
+    print(f"[ELECTRICITY BILL] OK | '{tenant}' | pagini adaugate={bill_page_count} | linii inlocuite={len(all_targets)}")
+
+
 
 
 def _make_white_jpeg() -> bytes:
