@@ -413,6 +413,40 @@ def _append_british_gas(doc, data):
             else:
                 print("[BRITISH GAS] Nu am gasit linia 'Covering:' pe pagina statement-ului")
 
+            # Gaseste linia care contine "Statement date:" si o actualizeaza cu end_str
+            # (Statement date = data de sfarsit a perioadei, aceeasi ca in "Covering: ... to <end_str>")
+            statement_spans = None
+            for block in pg.get_text("dict")["blocks"]:
+                if block.get("type") != 0:
+                    continue
+                for line in block["lines"]:
+                    line_text = "".join(s["text"] for s in line["spans"])
+                    if "Statement date" in line_text:
+                        statement_spans = line["spans"]
+                        break
+                if statement_spans:
+                    break
+
+            if statement_spans:
+                label_span = next((s for s in statement_spans if "Statement date" in s["text"]), None)
+                value_spans = [s for s in statement_spans if s is not label_span]
+                if value_spans:
+                    vx0 = min(s["bbox"][0] for s in value_spans)
+                    vy0 = min(s["bbox"][1] for s in value_spans)
+                    vx1 = max(s["bbox"][2] for s in value_spans)
+                    vy1 = max(s["bbox"][3] for s in value_spans)
+                    vsize = value_spans[0].get("size", 9)
+                    pg.add_redact_annot(fitz.Rect(vx0 - 1, vy0 - 1, vx1 + 1, vy1 + 1), fill=(1, 1, 1))
+                    pg.apply_redactions()
+                    baseline_y = vy1 - (vy1 - vy0) * 0.22
+                    pg.insert_text((vx0, baseline_y), end_str,
+                                    fontsize=vsize, fontname="helv", color=(0, 0, 0))
+                    print(f"[BRITISH GAS] Statement date actualizat: {end_str}")
+                else:
+                    print("[BRITISH GAS] Statement date: gasit label dar nu si valoarea de inlocuit")
+            else:
+                print("[BRITISH GAS] Nu am gasit linia 'Statement date:' pe pagina statement-ului")
+
     print(f"[BRITISH GAS] OK | font={'Arial' if fontfile else 'helv'} {RS}pt | '{tenant}'")
 
 
