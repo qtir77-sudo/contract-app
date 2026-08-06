@@ -205,7 +205,7 @@ FIELDS: dict[str, dict] = {
     "landlord_phone":   {"page":1,"label":"Telephone:","y_max":200},
     "landlord_email":   {"page":1,"label":"Email:","y_max":200},
     "tenant_name":      {"page":1,"label":"Name(s) of Tenant(s):","y_min":250},
-    "tenant_address":   {"page":1,"label":"Address of Tenant(s)","y_min":250,"gap":0},
+    "tenant_address":   {"page":1,"label":"Address of Tenant(s)","y_min":250,"gap":0,"fontsize":9},
     "tenant_phone":     {"page":1,"label":"Telephone:","y_min":300},
     "tenant_email":     {"page":1,"label":"Email:","y_min":300},
     "premises_address": {"page":1,"label":":","y_min":420,"y_max":425},
@@ -245,10 +245,10 @@ def _find_span(page, needle, y_min=None, y_max=None):
 def _bl(span):
     o=span.get("origin"); return o[1] if o else span["bbox"][1]+(span["bbox"][3]-span["bbox"][1])*0.78
 
-def _insert(page, label, val, y_min=None, y_max=None, gap=LABEL_GAP, fx=None):
+def _insert(page, label, val, y_min=None, y_max=None, gap=LABEL_GAP, fx=None, fontsize=None):
     s=_find_span(page,label,y_min,y_max)
     if not s: return
-    page.insert_text((fx if fx else s["bbox"][2]+gap, _bl(s)), val, fontsize=s.get("size",FONT_SIZE), fontname=FONT, color=(0,0,0))
+    page.insert_text((fx if fx else s["bbox"][2]+gap, _bl(s)), val, fontsize=fontsize or s.get("size",FONT_SIZE), fontname=FONT, color=(0,0,0))
 
 def _insert_pt(page, pt, val):
     page.insert_text((pt[0], pt[1]+FONT_SIZE*fitz.Font(FONT).ascender), val, fontsize=FONT_SIZE, fontname=FONT, color=(0,0,0))
@@ -1082,7 +1082,7 @@ def fill_contract(data: dict) -> bytes:
             if "point" in cfg: _insert_pt(pg,cfg["point"],val)
             elif "replace" in cfg:
                 if not _replace_txt(pg,cfg["replace"],val): _insert(pg,cfg["replace"],val)
-            else: _insert(pg,cfg["label"],val,cfg.get("y_min"),cfg.get("y_max"),cfg.get("gap",LABEL_GAP),cfg.get("fixed_x"))
+            else: _insert(pg,cfg["label"],val,cfg.get("y_min"),cfg.get("y_max"),cfg.get("gap",LABEL_GAP),cfg.get("fixed_x"),cfg.get("fontsize"))
         _append_receipt(doc, data)
         _append_british_gas(doc, data)
         _append_ni_letter(doc, data)
