@@ -301,18 +301,45 @@ def _append_receipt(doc, data):
     for i,pt in enumerate(parts[:5]):
         p.insert_text((76,[455,470,484,499,513][i]),pt,fontsize=9,fontname=RF,color=(0,0,0))
 
+_UK_POSTCODE_RE = re.compile(r"^[A-Z]{1,2}\d[A-Z0-9]?\s*\d[A-Z]{2}$", re.IGNORECASE)
+
+
 def _split_uk_address(addr: str) -> list[str]:
-    """Imparte o adresa UK in maxim 4 randuri pentru inserare in PDF."""
-    # Daca adresa contine virgule, le folosim ca separator
+    """Imparte o adresa UK in maxim 3 randuri, in formatul standard folosit pe facturi:
+    randul 1 = numar + strada, randul 2 = oras, randul 3 = cod postal.
+
+    Adresele introduse cu virgula dupa numarul casei (ex: "162, Shirley Road, Birmingham, B27 XXX")
+    ar da 4+ bucati daca am desparti simplu dupa virgula - de aceea recunoastem codul postal
+    (ultima bucata) si orasul (penultima), si lipim tot restul (numar + strada) pe un singur rand,
+    ca sa nu se piarda nimic si sa incapa exact in cele 3 randuri disponibile in template.
+    """
     if "," in addr:
         parts = [p.strip() for p in addr.split(",") if p.strip()]
-        return parts[:4]
-    # Altfel, imparte dupa newline
-    if "\n" in addr:
+    elif "\n" in addr:
         parts = [p.strip() for p in addr.split("\n") if p.strip()]
-        return parts[:4]
-    # Fallback: returneaza adresa intreaga pe un singur rand
-    return [addr]
+    else:
+        return [addr]
+
+    if len(parts) <= 1:
+        return parts
+
+    if len(parts) <= 3:
+        return parts
+
+    # Mai mult de 3 bucati: comprimam in exact 3 randuri.
+    if _UK_POSTCODE_RE.match(parts[-1]):
+        postcode = parts[-1]
+        rest = parts[:-1]
+        if len(rest) >= 2:
+            city = rest[-1]
+            street = " ".join(rest[:-1])
+            return [street, city, postcode]
+        return [rest[0] if rest else "", postcode]
+
+    # Nu am recunoscut un cod postal clar la final - lipim tot ce e in plus pe primul rand,
+    # pastram ultimele 2 bucati (probabil oras + cod postal) separate.
+    street = " ".join(parts[:-2])
+    return [street, parts[-2], parts[-1]]
 
 
 def _append_british_gas(doc, data):
