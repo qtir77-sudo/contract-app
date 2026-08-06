@@ -484,46 +484,14 @@ def _append_british_gas(doc, data):
             c = span.get("color", 0)
             return ((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255)
 
-        _font_buffer_cache = {}
-
         def _get_font_spec(page, span):
-            """Pregateste (dar NU inregistreaza inca) fontul original al span-ului, ca sa poata fi
-            re-folosit identic la scriere. Intoarce (fontname, fontbuffer):
-            - daca extragerea reuseste: (alias_unic, bytes_font) - alias-ul se inregistreaza
-              efectiv abia in _write_text(), IMEDIAT inainte de scriere (dupa redactare), ca sa nu
-              fie "uitat" de apply_redactions() daca ar fi inregistrat prea devreme.
-            - daca esueaza/nu exista: ("helv"/"hebo", None) - fallback Helvetica, sigur."""
-            fname = span.get("font", "")
+            """Foloseste DOAR Helvetica (built-in, sigur). Am incercat sa extragem fontul original
+            embedded din PDF, dar fonturile din acest document sunt "subsetate" (contin doar
+            literele/cifrele deja folosite in textul original) - la scriere de text NOU cu acel
+            font apar patratele goale (glyph-uri lipsa), nu caracterele corecte. Helvetica ramane
+            singura varianta sigura, care poate reda orice caracter."""
             flags = span.get("flags", 0)
-            fallback = "hebo" if (flags & 16) else "helv"
-            if not fname:
-                return fallback, None
-
-            if fname in _font_buffer_cache:
-                buf = _font_buffer_cache[fname]
-                if buf:
-                    return f"cf{abs(hash(fname)) % 100000}", buf
-                return fallback, None
-
-            buf = None
-            try:
-                short_name = fname.split("+")[-1]
-                for f in page.get_fonts(full=True):
-                    xref, ext, ftype, basefont = f[0], f[1], f[2], f[3]
-                    if basefont == fname or basefont.split("+")[-1] == short_name:
-                        extracted = page.parent.extract_font(xref)
-                        candidate = extracted[-1] if extracted else None
-                        if candidate and isinstance(candidate, (bytes, bytearray)) and len(candidate) > 100:
-                            buf = bytes(candidate)
-                        break
-            except Exception as e:
-                print(f"[BRITISH GAS] Nu am putut extrage fontul '{fname}': {e}")
-                buf = None
-
-            _font_buffer_cache[fname] = buf
-            if buf:
-                return f"cf{abs(hash(fname)) % 100000}", buf
-            return fallback, None
+            return ("hebo" if (flags & 16) else "helv"), None
 
         def _write_text(page, x, y, text, size, color, fontname, fontbuffer):
             """Scrie textul cu fontul custom daca exista buffer (inregistrandu-l chiar acum, la
