@@ -484,41 +484,9 @@ def _append_british_gas(doc, data):
             c = span.get("color", 0)
             return ((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255)
 
-        _custom_font_cache = {}
-
         def _span_font(page, span):
-            """Incearca sa extraga si sa re-foloseasca fontul EXACT din PDF (span['font'], ex:
-            'ABCDEE+GTWalsheimPro-Bold'), ca textul nou sa arate identic cu cel original - nu
-            aproximat cu Helvetica generic. Daca fontul nu poate fi extras (nu e embedded complet,
-            sau alt motiv), cade inapoi pe Helvetica bold/normal, ca sa nu crape generarea."""
-            fname = span.get("font", "")
             flags = span.get("flags", 0)
-            fallback = "hebo" if (flags & 16) else "helv"
-            if not fname:
-                return fallback
-
-            cache_key = (id(page), fname)
-            if cache_key in _custom_font_cache:
-                return _custom_font_cache[cache_key] or fallback
-
-            alias = None
-            try:
-                short_name = fname.split("+")[-1]  # scoate prefixul de subset, ex "ABCDEE+"
-                for f in page.get_fonts(full=True):
-                    xref, ext, ftype, basefont = f[0], f[1], f[2], f[3]
-                    if basefont == fname or basefont.split("+")[-1] == short_name:
-                        extracted = page.parent.extract_font(xref)
-                        fontbuffer = extracted[-1] if extracted else None
-                        if fontbuffer:
-                            alias = f"custfont{len(_custom_font_cache)}"
-                            page.insert_font(fontname=alias, fontbuffer=fontbuffer)
-                        break
-            except Exception as e:
-                print(f"[BRITISH GAS] Nu am putut extrage fontul original '{fname}': {e}")
-                alias = None
-
-            _custom_font_cache[cache_key] = alias
-            return alias or fallback
+            return "hebo" if (flags & 16) else "helv"  # bold vs normal Helvetica
 
         def _update_wrapped_balance_date(label, must_include, must_exclude, date_str):
             """Cauta blocul care contine toate cuvintele din must_include si niciunul din
