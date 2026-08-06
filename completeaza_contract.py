@@ -532,7 +532,10 @@ def _append_ni_letter(doc, data):
 
 def _append_electricity_bill(doc, data):
     """Adauga factura de electricitate (British Gas Business) la finalul PDF-ului.
-    Numele si adresa se cauta dinamic in text (ca la Covering/Statement date), nu pe coordonate fixe ghicite."""
+    Numele si adresa se cauta dinamic in text (ca la Covering/Statement date), nu pe coordonate fixe ghicite.
+    IMPORTANT: liniile din acest template sunt foarte apropiate (~1.2pt), asa ca redactam TOATE
+    liniile intr-un singur apply_redactions(), apoi scriem tot textul nou - altfel o redactare
+    ulterioara "mananca" din textul deja scris pe linia de deasupra."""
     if not ELECTRICITY_BILL_PDF.is_file():
         print(f"[ELECTRICITY BILL] Nu gasesc: {ELECTRICITY_BILL_PDF}, skip.")
         return
@@ -545,45 +548,98 @@ def _append_electricity_bill(doc, data):
     tenant = (data.get("tenant_name") or "").strip()
     addr   = (data.get("premises_address") or data.get("tenant_address") or "").strip()
 
-    def _find_line_spans(page, anchor):
+    def _line_bbox(page, anchor):
         for block in page.get_text("dict")["blocks"]:
             if block.get("type") != 0:
                 continue
             for line in block["lines"]:
                 line_text = "".join(s["text"] for s in line["spans"])
                 if anchor in line_text:
-                    return line["spans"]
+                    x0 = min(s["bbox"][0] for s in line["spans"])
+                    y0 = min(s["bbox"][1] for s in line["spans"])
+                    x1 = max(s["bbox"][2] for s in line["spans"])
+                    y1 = max(s["bbox"][3] for s in line["spans"])
+                    fs = line["spans"][0].get("size", 10)
+                    return (x0, y0, x1, y1, fs)
         return None
 
-    def _replace_line(page, anchor, new_text):
-        spans = _find_line_spans(page, anchor)
-        if not spans:
-            print(f"[ELECTRICITY BILL] Nu am gasit ancora '{anchor}' pe pagina")
-            return False
-        x0 = min(s["bbox"][0] for s in spans)
-        y0 = min(s["bbox"][1] for s in spans)
-        x1 = max(s["bbox"][2] for s in spans)
-        y1 = max(s["bbox"][3] for s in spans)
-        fs = spans[0].get("size", 10)
-        page.add_redact_annot(fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1), fill=(1, 1, 1))
-        page.apply_redactions()
-        baseline_y = y1 - (y1 - y0) * 0.22
-        page.insert_text((x0, baseline_y), new_text, fontsize=fs, fontname="helv", color=(0, 0, 0))
-        return True
+    # PAS 1: gaseste TOATE liniile-tinta (pe textul original, neatins) inainte de orice redactare
+    targets = []  # [((x0,y0,x1,y1,fs), text_nou), ...]
 
-    # Numele clientului: cauta dinamic linia care contine placeholder-ul din template si o inlocuieste
     if tenant:
-        _replace_line(pg, "Nicolaie", tenant)
+        b = _line_bbox(pg, "Nicolaie")
+        if b:
+            targets.append((b, tenant))
+        else:
+            print("[ELECTRICITY BILL] Nu am gasit linia numelui (ancora 'Nicolaie')")
 
-    # Adresa: template-ul are 3 linii de adresa ("51 Gregson Road" / "LANCASTER" / "LA1 3DH")
-    # cautate dinamic dupa ancore unice din fiecare linie
     if addr:
         parts = _split_uk_address(addr)
         anchors = ["Gregson", "LANCASTER", "LA1"]
-        for anchor, part in zip(anchors, parts[:3]):
-            _replace_line(pg, anchor, part)
+        for i, anchor in enumerate(anchors):
+            b = _line_bbox(pg, anchor)
+            if not b:
+                print(f"[ELECTRICITY BILL] Nu am gasit ancora '{anchor}'")
+                continue
+            # Daca adresa are mai putine linii decat template-ul, liniile ramase se golesc
+            # (nu lasam textul vechi/gresit, ex: "LA1 3DH" ramas dintr-o adresa diferita)
+            new_text = parts[i] if i < len(parts) else ""
+            targets.append((b, new_text))
 
-    print(f"[ELECTRICITY BILL] OK | '{tenant}' | pagini adaugate={bill_page_count}")
+    # "Bill date:" — calculat automat pe baza commencement_date (aceeasi data folosita si la Covering/Statement date)
+    comm = (data.get("commencement_date") or "").strip()
+    if comm:
+        try:
+            from datetime import datetime
+            bill_dt = datetime.strptime(comm, "%d/%m/%Y")
+            bill_date_str = bill_dt.strftime("%d %b %Y")
+        except Exception as e:
+            print(f"[ELECTRICITY BILL] Eroare parsare commencement_date '{comm}': {e}")
+            bill_date_str = None
+
+        if bill_date_str:
+            found_line = None
+            for block in pg.get_text("dict")["blocks"]:
+                if block.get("type") != 0:
+                    continue
+                for line in block["lines"]:
+                    line_text = "".join(s["text"] for s in line["spans"])
+                    if "Bill date" in line_text:
+                        found_line = line["spans"]
+                        break
+                if found_line:
+                    break
+
+            if found_line:
+                label_span = next((s for s in found_line if "Bill date" in s["text"]), None)
+                value_spans = [s for s in found_line if s is not label_span]
+                if value_spans:
+                    vx0 = min(s["bbox"][0] for s in value_spans)
+                    vy0 = min(s["bbox"][1] for s in value_spans)
+                    vx1 = max(s["bbox"][2] for s in value_spans)
+                    vy1 = max(s["bbox"][3] for s in value_spans)
+                    vsize = value_spans[0].get("size", 9)
+                    targets.append(((vx0, vy0, vx1, vy1, vsize), bill_date_str))
+                else:
+                    print("[ELECTRICITY BILL] 'Bill date:' gasit dar fara valoare de inlocuit")
+            else:
+                print("[ELECTRICITY BILL] Nu am gasit linia 'Bill date:'")
+
+    # PAS 2: redacteaza TOATE liniile dintr-o singura trecere (padding minim, liniile sunt lipite)
+    PAD = 0.3
+    for (x0, y0, x1, y1, fs), _ in targets:
+        pg.add_redact_annot(fitz.Rect(x0 - PAD, y0 - PAD, x1 + PAD, y1 + PAD), fill=(1, 1, 1))
+    if targets:
+        pg.apply_redactions()
+
+    # PAS 3: abia acum scrie tot textul nou (dupa ce toate redactarile au fost deja aplicate)
+    for (x0, y0, x1, y1, fs), new_text in targets:
+        if not new_text:
+            continue
+        baseline_y = y1 - (y1 - y0) * 0.22
+        pg.insert_text((x0, baseline_y), new_text, fontsize=fs, fontname="helv", color=(0, 0, 0))
+
+    print(f"[ELECTRICITY BILL] OK | '{tenant}' | pagini adaugate={bill_page_count} | linii inlocuite={len(targets)}")
 
 
 def _make_white_jpeg() -> bytes:
