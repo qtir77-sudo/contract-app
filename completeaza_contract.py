@@ -606,6 +606,39 @@ def _append_british_gas(doc, data):
             _update_single_line_date(pg2, "opening balance", start_str)
             _update_single_line_date(pg2, "new balance", end_str)
 
+            # "20 Apr 26- 20 May 26" - perioada de facturare din tabelul de gaz, format scurt
+            # (zi + luna prescurtata + an pe 2 cifre), scrisa ca un span DISTINCT (bold), separat
+            # de restul randului (kWh/pret/suma) - deci redactam DOAR acel span, nu tot randul.
+            if comm:
+                short_start = start_dt.strftime("%d %b %y")
+                short_end = end_dt.strftime("%d %b %y")
+                new_range = f"{short_start}- {short_end}"
+                range_re = re.compile(r"^\d{1,2}\s+[A-Za-z]{3}\s+\d{2}\s*-\s*\d{1,2}\s+[A-Za-z]{3}\s+\d{2}$")
+                found_range = False
+                for block in pg2.get_text("dict")["blocks"]:
+                    if block.get("type") != 0:
+                        continue
+                    for ln in block["lines"]:
+                        for sp in ln["spans"]:
+                            if range_re.match(sp["text"].strip()):
+                                sx0, sy0, sx1, sy1 = sp["bbox"]
+                                ssize = sp.get("size", 11)
+                                scolor = _span_color(sp)
+                                sfont = _span_font(sp)
+                                pg2.add_redact_annot(fitz.Rect(sx0 - 1, sy0 - 1, sx1 + 1, sy1 + 1), fill=(1, 1, 1))
+                                pg2.apply_redactions()
+                                baseline_y = sy1 - (sy1 - sy0) * 0.22
+                                pg2.insert_text((sx0, baseline_y), new_range, fontsize=ssize, fontname=sfont, color=scolor)
+                                print(f"[BRITISH GAS] Pagina 2 - perioada facturare (scurt) actualizata: {new_range}")
+                                found_range = True
+                                break
+                        if found_range:
+                            break
+                    if found_range:
+                        break
+                if not found_range:
+                    print("[BRITISH GAS] Pagina 2 - nu am gasit span-ul cu perioada scurta (ex: '20 Apr 26- 20 May 26')")
+
     print(f"[BRITISH GAS] OK | font={'Arial' if fontfile else 'helv'} {RS}pt | '{tenant}'")
 
 
