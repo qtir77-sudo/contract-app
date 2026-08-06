@@ -205,7 +205,7 @@ FIELDS: dict[str, dict] = {
     "landlord_phone":   {"page":1,"label":"Telephone:","y_max":200},
     "landlord_email":   {"page":1,"label":"Email:","y_max":200},
     "tenant_name":      {"page":1,"label":"Name(s) of Tenant(s):","y_min":250},
-    "tenant_address":   {"page":1,"label":"Address of Tenant(s)","y_min":250,"gap":0,"fontsize":9},
+    "tenant_address":   {"page":1,"label":"Address of Tenant(s)","y_min":250,"gap":0,"fontsize":11},
     "tenant_phone":     {"page":1,"label":"Telephone:","y_min":300},
     "tenant_email":     {"page":1,"label":"Email:","y_min":300},
     "premises_address": {"page":1,"label":":","y_min":420,"y_max":425},
