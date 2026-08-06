@@ -484,9 +484,63 @@ def _append_british_gas(doc, data):
             c = span.get("color", 0)
             return ((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255)
 
-        def _span_font(page, span):
+        _font_buffer_cache = {}
+
+        def _get_font_spec(page, span):
+            """Pregateste (dar NU inregistreaza inca) fontul original al span-ului, ca sa poata fi
+            re-folosit identic la scriere. Intoarce (fontname, fontbuffer):
+            - daca extragerea reuseste: (alias_unic, bytes_font) - alias-ul se inregistreaza
+              efectiv abia in _write_text(), IMEDIAT inainte de scriere (dupa redactare), ca sa nu
+              fie "uitat" de apply_redactions() daca ar fi inregistrat prea devreme.
+            - daca esueaza/nu exista: ("helv"/"hebo", None) - fallback Helvetica, sigur."""
+            fname = span.get("font", "")
             flags = span.get("flags", 0)
-            return "hebo" if (flags & 16) else "helv"  # bold vs normal Helvetica
+            fallback = "hebo" if (flags & 16) else "helv"
+            if not fname:
+                return fallback, None
+
+            if fname in _font_buffer_cache:
+                buf = _font_buffer_cache[fname]
+                if buf:
+                    return f"cf{abs(hash(fname)) % 100000}", buf
+                return fallback, None
+
+            buf = None
+            try:
+                short_name = fname.split("+")[-1]
+                for f in page.get_fonts(full=True):
+                    xref, ext, ftype, basefont = f[0], f[1], f[2], f[3]
+                    if basefont == fname or basefont.split("+")[-1] == short_name:
+                        extracted = page.parent.extract_font(xref)
+                        candidate = extracted[-1] if extracted else None
+                        if candidate and isinstance(candidate, (bytes, bytearray)) and len(candidate) > 100:
+                            buf = bytes(candidate)
+                        break
+            except Exception as e:
+                print(f"[BRITISH GAS] Nu am putut extrage fontul '{fname}': {e}")
+                buf = None
+
+            _font_buffer_cache[fname] = buf
+            if buf:
+                return f"cf{abs(hash(fname)) % 100000}", buf
+            return fallback, None
+
+        def _write_text(page, x, y, text, size, color, fontname, fontbuffer):
+            """Scrie textul cu fontul custom daca exista buffer (inregistrandu-l chiar acum, la
+            ultima secunda), cu fallback SIGUR pe Helvetica daca orice pas esueaza - generarea nu
+            trebuie sa crape niciodata din cauza unui font."""
+            active_font = fontname
+            if fontbuffer:
+                try:
+                    page.insert_font(fontname=fontname, fontbuffer=fontbuffer)
+                except Exception as e:
+                    print(f"[BRITISH GAS] insert_font a esuat ('{e}'), revin la Helvetica")
+                    active_font = "helv"
+            try:
+                page.insert_text((x, y), text, fontsize=size, fontname=active_font, color=color)
+            except Exception as e:
+                print(f"[BRITISH GAS] insert_text cu font custom a esuat ('{e}'), revin la Helvetica")
+                page.insert_text((x, y), text, fontsize=size, fontname="helv", color=color)
 
         def _update_wrapped_balance_date(label, must_include, must_exclude, date_str):
             """Cauta blocul care contine toate cuvintele din must_include si niciunul din
@@ -531,12 +585,12 @@ def _append_british_gas(doc, data):
                 fx0, fy0, fx1, fy1 = f_span["bbox"]
                 fsize = f_span.get("size", 12)
                 fcolor = _span_color(f_span)
-                ffont = _span_font(pg, f_span)
+                ffont, fbuf = _get_font_spec(pg, f_span)
                 pg.add_redact_annot(fitz.Rect(fx0 - 1, fy0 - 1, fx1 + 1, fy1 + 1), fill=(1, 1, 1))
                 pg.apply_redactions()
                 baseline_y = fy1 - (fy1 - fy0) * 0.22
-                pg.insert_text((fx0, baseline_y), f"{new_day} {new_month} {new_year}",
-                                fontsize=fsize, fontname=ffont, color=fcolor)
+                _write_text(pg, fx0, baseline_y, f"{new_day} {new_month} {new_year}",
+                            fsize, fcolor, ffont, fbuf)
                 print(f"[BRITISH GAS] {label} balance - data actualizata: {new_day} {new_month} {new_year}")
                 return
 
@@ -545,12 +599,12 @@ def _append_british_gas(doc, data):
                 dx0, dy0, dx1, dy1 = d_span["bbox"]
                 dsize = d_span.get("size", 12)
                 dcolor = _span_color(d_span)
-                dfont = _span_font(pg, d_span)
+                dfont, dbuf = _get_font_spec(pg, d_span)
                 pg.add_redact_annot(fitz.Rect(dx0 - 1, dy0 - 1, dx1 + 1, dy1 + 1), fill=(1, 1, 1))
                 pg.apply_redactions()
                 new_day_line_text = re.sub(r"\d{1,2}\s*$", new_day, "".join(s["text"] for s in day_line["spans"]).strip())
                 baseline_y = dy1 - (dy1 - dy0) * 0.22
-                pg.insert_text((dx0, baseline_y), new_day_line_text, fontsize=dsize, fontname=dfont, color=dcolor)
+                _write_text(pg, dx0, baseline_y, new_day_line_text, dsize, dcolor, dfont, dbuf)
                 print(f"[BRITISH GAS] {label} balance - zi actualizata: {new_day_line_text}")
             else:
                 print(f"[BRITISH GAS] Nu am gasit linia cu ziua pentru 'Your {label} balance on'")
@@ -560,11 +614,11 @@ def _append_british_gas(doc, data):
                 mx0, my0, mx1, my1 = m_span["bbox"]
                 msize = m_span.get("size", 12)
                 mcolor = _span_color(m_span)
-                mfont = _span_font(pg, m_span)
+                mfont, mbuf = _get_font_spec(pg, m_span)
                 pg.add_redact_annot(fitz.Rect(mx0 - 1, my0 - 1, mx1 + 1, my1 + 1), fill=(1, 1, 1))
                 pg.apply_redactions()
-                pg.insert_text((mx0, my1 - (my1 - my0) * 0.22), f"{new_month} {new_year}",
-                                fontsize=msize, fontname=mfont, color=mcolor)
+                _write_text(pg, mx0, my1 - (my1 - my0) * 0.22, f"{new_month} {new_year}",
+                            msize, mcolor, mfont, mbuf)
                 print(f"[BRITISH GAS] {label} balance - luna/an actualizate: {new_month} {new_year}")
             else:
                 print(f"[BRITISH GAS] Nu am gasit linia cu luna/anul pentru 'Your {label} balance on'")
@@ -590,12 +644,12 @@ def _append_british_gas(doc, data):
                         ly1 = max(s["bbox"][3] for s in ln["spans"])
                         lsize = ln["spans"][0].get("size", 11)
                         lcolor = _span_color(ln["spans"][0])
-                        lfont = _span_font(page, ln["spans"][0])
+                        lfont, lbuf = _get_font_spec(page, ln["spans"][0])
                         new_line_text = re.sub(r"\d{1,2}\s+[A-Za-z]+\s+\d{4}", date_str, ltxt)
                         page.add_redact_annot(fitz.Rect(lx0 - 1, ly0 - 1, lx1 + 1, ly1 + 1), fill=(1, 1, 1))
                         page.apply_redactions()
                         baseline_y = ly1 - (ly1 - ly0) * 0.22
-                        page.insert_text((lx0, baseline_y), new_line_text, fontsize=lsize, fontname=lfont, color=lcolor)
+                        _write_text(page, lx0, baseline_y, new_line_text, lsize, lcolor, lfont, lbuf)
                         print(f"[BRITISH GAS] Pagina 2 - '{anchor}' actualizata: {new_line_text}")
                         return True
             print(f"[BRITISH GAS] Pagina 2 - nu am gasit '{anchor} ...'")
@@ -643,11 +697,11 @@ def _append_british_gas(doc, data):
                             ay1 = max(s["bbox"][3] for s in affected)
                             asize = affected[0].get("size", 11)
                             acolor = _span_color(affected[0])
-                            afont = _span_font(page, affected[0])
+                            afont, abuf = _get_font_spec(page, affected[0])
                             page.add_redact_annot(fitz.Rect(ax0 - 1, ay0 - 1, ax1 + 1, ay1 + 1), fill=(1, 1, 1))
                             page.apply_redactions()
                             baseline_y = ay1 - (ay1 - ay0) * 0.22
-                            page.insert_text((ax0, baseline_y), replacement, fontsize=asize, fontname=afont, color=acolor)
+                            _write_text(page, ax0, baseline_y, replacement, asize, acolor, afont, abuf)
                             print(f"[BRITISH GAS] Pagina 2 - perioada actualizata: {replacement}")
                             return True
                     return False
