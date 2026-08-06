@@ -21,8 +21,9 @@ sys.path.insert(0, str(DIR))
 
 from completeaza_contract import fill_contract, search_real_agents, VERSION as CONTRACT_VERSION
 from completeaza_nhs import fill_nhs_letter, find_gps_overpass, VERSION as NHS_VERSION
+from completeaza_social import fill_social_letter, VERSION as SOCIAL_VERSION
 
-print(f"[START] Contract v{CONTRACT_VERSION} | NHS v{NHS_VERSION}")
+print(f"[START] Contract v{CONTRACT_VERSION} | NHS v{NHS_VERSION} | Social v{SOCIAL_VERSION}")
 
 # ── Stocare persistenta (Programari / Dosare) ──────────────────────────────
 # Daca exista un Railway Volume atasat, RAILWAY_VOLUME_MOUNT_PATH e setat automat
@@ -177,6 +178,22 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, pdf, "application/pdf", "nhs-registration.pdf")
             return
 
+        # ── /generate-social (Social Service) ─────────────────────────────────
+        if path == "/generate-social":
+            try:
+                data = json.loads(raw.decode())
+            except Exception:
+                self._send(400, b"JSON invalid", "text/plain"); return
+            try:
+                pdf = fill_social_letter(data)
+            except FileNotFoundError as e:
+                self._send(404, str(e).encode(), "text/plain"); return
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                self._send(500, f"Eroare: {e}".encode(), "text/plain"); return
+            self._send(200, pdf, "application/pdf", "social-service-letter.pdf")
+            return
+
         # ── /search-agent (Contract) ─────────────────────────────────────────
         if path == "/search-agent":
             try:
@@ -203,7 +220,7 @@ def main():
     port = int(os.environ.get("PORT", sys.argv[1] if len(sys.argv) > 1 else 8765))
     server = HTTPServer(("0.0.0.0", port), Handler)
     print("=" * 60)
-    print(f"  Combined Tool - Contract v{CONTRACT_VERSION} + NHS v{NHS_VERSION}")
+    print(f"  Combined Tool - Contract v{CONTRACT_VERSION} + NHS v{NHS_VERSION} + Social v{SOCIAL_VERSION}")
     print(f"  Port: {port}")
     print("=" * 60)
     try:
