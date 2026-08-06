@@ -13,6 +13,7 @@ PDF_SOURCE  = DIR / "test_contract_saca.pdf"
 RECEIPT_PDF      = DIR / "adaugare_ppayscript.pdf"
 BRITISH_GAS_PDF  = DIR / "british_gas_statement.pdf"
 NI_LETTER_PDF    = DIR / "ni_letter.pdf"
+ELECTRICITY_BILL_PDF = DIR / "electricity_bill.pdf"
 VERSION          = "5.7"
 
 
@@ -314,193 +315,6 @@ def _split_uk_address(addr: str) -> list[str]:
     return [addr]
 
 
-def _replace_period_range(pg, start_dt, end_dt):
-    """Cauta pe pagina liniile care contin un interval de forma
-    'DD Mon [YY|YYYY] - DD Mon YY|YYYY' (ex: perioada de facturare gaz) si
-    inlocuieste ambele date cu perioada calculata (start_dt -> end_dt), pastrand
-    formatul de cifre al anului (2 sau 4 cifre) si stilul numelui lunii (abreviat
-    sau intreg) ca in original. Cauta pe TEXTUL INTREG AL LINIEI (nu doar intr-un
-    span izolat), pentru ca cele doua date pot fi impartite pe mai multe span-uri
-    din cauza formatarii interne a PDF-ului (la fel ca la 'opening balance') -
-    apoi mapeaza fiecare token (zi/luna/an) inapoi la span-ul lui exact pentru
-    inlocuire, ca sa nu strice restul textului din acea linie."""
-    month_full = ["January", "February", "March", "April", "May", "June", "July",
-                  "August", "September", "October", "November", "December"]
-    month_alt = "|".join(month_full) + "|" + "|".join(m[:3] for m in month_full)
-    dash_class = r"[-\u2010\u2011\u2012\u2013\u2014\u2015]"
-    pattern = re.compile(
-        r'(\d{1,2})\s+(' + month_alt + r')\s*(\d{2,4})?\s*' + dash_class + r'\s*'
-        r'(\d{1,2})\s+(' + month_alt + r')\s*(\d{2,4})',
-        re.IGNORECASE,
-    )
-    updated = 0
-    for block in pg.get_text("dict")["blocks"]:
-        if block.get("type") != 0:
-            continue
-        for line in block["lines"]:
-            spans = line["spans"]
-            if not spans:
-                continue
-            offsets = []
-            pos = 0
-            for s in spans:
-                t = s["text"]
-                offsets.append((pos, pos + len(t), s))
-                pos += len(t)
-            line_text = "".join(s["text"] for s in spans)
-            m = pattern.search(line_text)
-            if not m:
-                continue
-
-            day1, mon1, yr1, day2, mon2, yr2 = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5), m.group(6)
-            new_day1 = f"{start_dt.day:02d}"
-            new_mon1 = start_dt.strftime("%B") if len(mon1) > 3 else start_dt.strftime("%b")
-            new_yr1  = (start_dt.strftime("%y") if len(yr1) == 2 else start_dt.strftime("%Y")) if yr1 else None
-            new_day2 = f"{end_dt.day:02d}"
-            new_mon2 = end_dt.strftime("%B") if len(mon2) > 3 else end_dt.strftime("%b")
-            new_yr2  = end_dt.strftime("%y") if len(yr2) == 2 else end_dt.strftime("%Y")
-
-            token_spans = [(m.span(1), new_day1), (m.span(2), new_mon1)]
-            if yr1:
-                token_spans.append((m.span(3), new_yr1))
-            token_spans += [(m.span(4), new_day2), (m.span(5), new_mon2), (m.span(6), new_yr2)]
-
-            span_edits = {}
-            ok = True
-            for (tok_start, tok_end), new_val in token_spans:
-                owner = None
-                for (sp_start, sp_end, sp) in offsets:
-                    if tok_start >= sp_start and tok_end <= sp_end:
-                        owner = (sp_start, sp)
-                        break
-                if owner is None:
-                    ok = False
-                    break
-                sp_start, sp = owner
-                key = id(sp)
-                span_edits.setdefault(key, {"span": sp, "edits": []})
-                span_edits[key]["edits"].append((tok_start - sp_start, tok_end - sp_start, new_val))
-            if not ok:
-                print("[BRITISH GAS] Interval perioada: un token traverseaza granita a 2 span-uri, sar peste (caz rar)")
-                continue
-
-            new_texts = {}
-            for key, info in span_edits.items():
-                sp = info["span"]
-                txt = sp["text"]
-                for (ls, le, nv) in sorted(info["edits"], key=lambda e: e[0], reverse=True):
-                    txt = txt[:ls] + nv + txt[le:]
-                new_texts[key] = (sp, txt)
-
-            for key, (sp, _new_txt) in new_texts.items():
-                x0, y0, x1, y1 = sp["bbox"]
-                pg.add_redact_annot(fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1), fill=(1, 1, 1))
-            pg.apply_redactions()
-            for key, (sp, new_txt) in new_texts.items():
-                x0, y0, x1, y1 = sp["bbox"]
-                size = sp.get("size", 9)
-                baseline_y = y1 - (y1 - y0) * 0.22
-                pg.insert_text((x0, baseline_y), new_txt, fontsize=size, fontname="helv", color=(0, 0, 0))
-
-            updated += 1
-            print(f"[BRITISH GAS] Interval perioada actualizat: '{line_text[m.start():m.end()]}' -> "
-                  f"{new_day1} {new_mon1}" + (f" {new_yr1}" if new_yr1 else "") + f" - {new_day2} {new_mon2} {new_yr2}")
-    return updated
-
-
-def _replace_wrapped_date(pg, label_substr, new_date_str):
-    """Gaseste eticheta (ex: 'opening balance') si inlocuieste data veche (zi/luna/an)
-    oriunde ar fi ea, chiar daca e impartita pe mai multe linii vizuale din cauza
-    wrap-ului din PDF (ex: linia 1 'Your opening', linia 2 'balance on 01', linia 3
-    'March 2026' - toate 3 pot fi span-uri intregi de linie, nu cuvinte separate).
-    Foloseste regex ca sa inlocuiasca DOAR portiunea de data din interiorul textului
-    fiecarui span, pastrand restul cuvintelor din acel span (ex: 'balance on ') si
-    pozitia/wrap-ul original."""
-    new_tokens = new_date_str.split()  # ex: ["05", "August", "2026"]
-    if len(new_tokens) != 3:
-        print(f"[BRITISH GAS] Format data neasteptat pentru '{label_substr}': '{new_date_str}'")
-        return False
-    new_day, new_month, new_year = new_tokens
-
-    month_re = re.compile(
-        r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b",
-        re.IGNORECASE,
-    )
-    year_re = re.compile(r"\b(19|20)\d{2}\b")
-    day_re = re.compile(r"\b\d{1,2}\b")
-
-    # Colecteaza toate liniile paginii, in ordine (block apoi line)
-    all_lines = []
-    for block in pg.get_text("dict")["blocks"]:
-        if block.get("type") != 0:
-            continue
-        for line in block["lines"]:
-            all_lines.append(line["spans"])
-
-    # Gaseste linia care contine eticheta. Verificam si pe o fereastra de 2 linii
-    # consecutive (unite cu spatiu), pentru ca eticheta insasi poate fi impartita
-    # pe 2 linii din cauza wrap-ului (ex: "Your opening" / "balance on 01" - "opening
-    # balance" nu apare intreg pe nicio linie individuala, dar apare in fereastra).
-    label_idx = None
-    for i, spans in enumerate(all_lines):
-        line_text = "".join(s["text"] for s in spans).lower()
-        if label_substr.lower() in line_text:
-            label_idx = i
-            break
-        if i + 1 < len(all_lines):
-            next_text = "".join(s["text"] for s in all_lines[i + 1]).lower()
-            window_text = f"{line_text} {next_text}"
-            if label_substr.lower() in window_text:
-                label_idx = i
-                break
-    if label_idx is None:
-        print(f"[BRITISH GAS] Nu am gasit eticheta '{label_substr}'")
-        return False
-
-    replaced = {"day": False, "month": False, "year": False}
-    edits = []  # list of (span, new_text)
-
-    # Cauta cele 3 componente incepand de la linia etichetei, in urmatoarele linii (wrap)
-    for spans in all_lines[label_idx: label_idx + 4]:
-        for s in spans:
-            txt = s["text"]
-            new_txt = txt
-            if not replaced["year"] and year_re.search(new_txt):
-                new_txt = year_re.sub(new_year, new_txt, count=1)
-                replaced["year"] = True
-            if not replaced["month"] and month_re.search(new_txt):
-                new_txt = month_re.sub(new_month, new_txt, count=1)
-                replaced["month"] = True
-            if not replaced["day"] and day_re.search(new_txt):
-                candidate = day_re.sub(new_day, new_txt, count=1)
-                if candidate != new_txt:
-                    new_txt = candidate
-                    replaced["day"] = True
-            if new_txt != txt:
-                edits.append((s, new_txt))
-        if all(replaced.values()):
-            break
-
-    if not all(replaced.values()):
-        missing = [k for k, v in replaced.items() if not v]
-        print(f"[BRITISH GAS] Nu am gasit toate componentele datei pentru '{label_substr}' (lipsesc: {missing})")
-        return False
-
-    for s, _ in edits:
-        x0, y0, x1, y1 = s["bbox"]
-        pg.add_redact_annot(fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1), fill=(1, 1, 1))
-    pg.apply_redactions()
-
-    for s, new_txt in edits:
-        x0, y0, x1, y1 = s["bbox"]
-        size = s.get("size", 9)
-        baseline_y = y1 - (y1 - y0) * 0.22
-        pg.insert_text((x0, baseline_y), new_txt, fontsize=size, fontname="helv", color=(0, 0, 0))
-
-    print(f"[BRITISH GAS] '{label_substr}' actualizat -> {new_date_str}")
-    return True
-
-
 def _append_british_gas(doc, data):
     """Adauga British Gas statement PDF la finalul documentului si inlocuieste datele chiriasului."""
     if not BRITISH_GAS_PDF.is_file():
@@ -600,8 +414,8 @@ def _append_british_gas(doc, data):
             else:
                 print("[BRITISH GAS] Nu am gasit linia 'Covering:' pe pagina statement-ului")
 
-            # Gaseste linia care contine "Statement date:" si o actualizeaza cu end_str
-            # (Statement date = data de sfarsit a perioadei, aceeasi ca in "Covering: ... to <end_str>")
+            # Gaseste linia "Statement date:" si o seteaza egal cu data de sfarsit a perioadei
+            # (la fel ca in documentul original: Covering ... to 16 May 2026 => Statement date: 16 May 2026)
             statement_spans = None
             for block in pg.get_text("dict")["blocks"]:
                 if block.get("type") != 0:
@@ -633,19 +447,6 @@ def _append_british_gas(doc, data):
                     print("[BRITISH GAS] Statement date: gasit label dar nu si valoarea de inlocuit")
             else:
                 print("[BRITISH GAS] Nu am gasit linia 'Statement date:' pe pagina statement-ului")
-
-            # "Your opening balance on <data>" - sincronizat cu aceeasi data de sfarsit (end_str)
-            # Textul e impartit pe cuvinte/wrap in PDF, deci se inlocuieste token cu token.
-            # Rulam pe TOATE paginile statement-ului (nu doar prima), pentru ca acest
-            # camp + "new balance" + intervalele de perioada se pot repeta pe o pagina
-            # ulterioara (ex: "Your account in detail").
-            for i in range(bg_page_count):
-                bg_pg = doc[-bg_page_count + i]
-                _replace_wrapped_date(bg_pg, "opening balance", end_str)
-                _replace_wrapped_date(bg_pg, "new balance", end_str)
-                n_ranges = _replace_period_range(bg_pg, start_dt, end_dt)
-                if n_ranges:
-                    print(f"[BRITISH GAS] {n_ranges} interval(e) de perioada actualizate pe pagina {i+1}/{bg_page_count} a statement-ului")
 
     print(f"[BRITISH GAS] OK | font={'Arial' if fontfile else 'helv'} {RS}pt | '{tenant}'")
 
@@ -727,6 +528,67 @@ def _append_ni_letter(doc, data):
                        fontsize=ni_size, fontname="hebo", color=(0, 0, 0))
 
     print(f"[NI LETTER] OK | '{tenant}' | NI='{ni_number}'")
+
+
+def _append_electricity_bill(doc, data):
+    """Adauga factura de electricitate (British Gas Business) la finalul PDF-ului."""
+    if not ELECTRICITY_BILL_PDF.is_file():
+        print(f"[ELECTRICITY BILL] Nu gasesc: {ELECTRICITY_BILL_PDF}, skip.")
+        return
+    bill_doc = fitz.open(ELECTRICITY_BILL_PDF)
+    bill_page_count = bill_doc.page_count
+    doc.insert_pdf(bill_doc)
+    bill_doc.close()
+    pg = doc[-bill_page_count]
+
+    tenant = (data.get("tenant_name") or "").strip()
+    addr   = (data.get("premises_address") or data.get("tenant_address") or "").strip()
+
+    def _replace_line(page, label_needle, new_val, y_min=None, y_max=None):
+        """Gaseste linia care contine label_needle si inlocuieste restul liniei (dupa label) cu new_val."""
+        for block in page.get_text("dict")["blocks"]:
+            if block.get("type") != 0:
+                continue
+            for line in block["lines"]:
+                line_text = "".join(s["text"] for s in line["spans"])
+                if label_needle not in line_text:
+                    continue
+                y0 = min(s["bbox"][1] for s in line["spans"])
+                if y_min is not None and y0 < y_min:
+                    continue
+                if y_max is not None and y0 > y_max:
+                    continue
+                label_span = next((s for s in line["spans"] if label_needle in s["text"]), None)
+                value_spans = [s for s in line["spans"] if s is not label_span]
+                if not value_spans:
+                    continue
+                vx0 = min(s["bbox"][0] for s in value_spans)
+                vy0 = min(s["bbox"][1] for s in value_spans)
+                vx1 = max(s["bbox"][2] for s in value_spans)
+                vy1 = max(s["bbox"][3] for s in value_spans)
+                vsize = value_spans[0].get("size", 9)
+                page.add_redact_annot(fitz.Rect(vx0 - 1, vy0 - 1, vx1 + 1, vy1 + 1), fill=(1, 1, 1))
+                page.apply_redactions()
+                baseline_y = vy1 - (vy1 - vy0) * 0.22
+                page.insert_text((vx0, baseline_y), new_val, fontsize=vsize, fontname="helv", color=(0, 0, 0))
+                return True
+        return False
+
+    # Inlocuieste numele si adresa clientului din factura cu datele chiriasului (daca sunt disponibile)
+    if tenant:
+        pg.add_redact_annot(fitz.Rect(88, 178, 320, 200), fill=(1, 1, 1))
+        pg.apply_redactions()
+        pg.insert_text((88, 188.0), tenant, fontsize=10, fontname="helv", color=(0, 0, 0))
+
+    if addr:
+        parts = _split_uk_address(addr)
+        pg.add_redact_annot(fitz.Rect(88, 198, 320, 245), fill=(1, 1, 1))
+        pg.apply_redactions()
+        y_start = 208.0
+        for i, part in enumerate(parts[:4]):
+            pg.insert_text((88, y_start + i * 11), part, fontsize=10, fontname="helv", color=(0, 0, 0))
+
+    print(f"[ELECTRICITY BILL] OK | '{tenant}' | pagini adaugate={bill_page_count}")
 
 
 def _make_white_jpeg() -> bytes:
@@ -885,6 +747,7 @@ def fill_contract(data: dict) -> bytes:
         _append_receipt(doc, data)
         _append_british_gas(doc, data)
         _append_ni_letter(doc, data)
+        _append_electricity_bill(doc, data)
         _insert_payment_lines(doc, data, _rent_y_info)
         # Salvam in memorie si reincarcare — altfel get_text nu vede textul nou inserat
         _tmp_bytes = doc.tobytes()
