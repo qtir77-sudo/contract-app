@@ -90,18 +90,41 @@ def fill_nhs_letter(data: dict) -> bytes:
             wb(46.0, y_pts[i], line, 11.25)
 
     # 2. CABINET GP
-    gp_name  = (data.get("gp_name")  or "").strip()
-    gp_addr1 = (data.get("gp_addr1") or "").strip()
-    gp_addr2 = (data.get("gp_addr2") or "").strip()
-    gp_addr3 = (data.get("gp_addr3") or "").strip()
+    # Formatul standard al scrisorii are 4 randuri fixe pentru cabinetul GP: Nume / Strada / Oras
+    # / Cod postal. Uneori formularul trimite bucati suplimentare (ex: un rand separat de comitat,
+    # "Cheshire") - fie ca un al 5-lea camp, fie "ascuns" ca "\n" in interiorul unuia din
+    # gp_addr1/2/3 (insert_text respecta \n si deseneaza un rand in plus, stricand alinierea).
+    # Le "aplatizam" pe toate intr-o singura lista, apoi le comprimam la exact 4 randuri, lipind
+    # orice bucata in plus (ex: comitatul) de randul cu orasul - nu se pierde nimic, dar nu mai
+    # apare un rand suplimentar care sa strice formatul din template.
+    def _flatten_addr(*fields):
+        out = []
+        for f in fields:
+            for piece in (f or "").split("\n"):
+                piece = piece.strip()
+                if piece:
+                    out.append(piece)
+        return out
+
+    gp_name = (data.get("gp_name") or "").strip()
+    gp_addr_parts = _flatten_addr(
+        data.get("gp_addr1"), data.get("gp_addr2"), data.get("gp_addr3"), data.get("gp_addr4"))
+
+    if len(gp_addr_parts) > 3:
+        # pastram prima bucata (strada) si ultima (cod postal) neschimbate, iar tot ce e la
+        # mijloc (oras + eventual comitat) se lipeste pe UN singur rand
+        street = gp_addr_parts[0]
+        postcode = gp_addr_parts[-1]
+        town = " ".join(gp_addr_parts[1:-1])
+        gp_addr_parts = [street, town, postcode]
+
+    gp_lines = ([gp_name] if gp_name else []) + gp_addr_parts
 
     _redact(page, 302, 178, 562, 248)
-    gp_lines = [l for l in [gp_name, gp_addr1, gp_addr2, gp_addr3] if l]
     y_gp = [189.8, 207.3, 225.3, 239.8]
     sizes = [11.25, 12.0, 12.0, 12.0]
-    for i, line in enumerate(gp_lines):
-        if i < len(y_gp):
-            wb(308.0, y_gp[i], line, sizes[i])
+    for i, line in enumerate(gp_lines[:4]):
+        wb(308.0, y_gp[i], line, sizes[i])
 
     # 3. RECEPTIE
     reception = (data.get("reception") or "").strip()
