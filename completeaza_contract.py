@@ -768,6 +768,28 @@ def _append_ni_letter(doc, data):
 
     print(f"[NI LETTER] OK | '{tenant}' | NI='{ni_number}'")
 
+    # ── Inlocuieste permanent "HMRC 03/26" cu "HMRC 08/26" pe ambele pagini ────
+    # (text static din footer-ul formularului, apare pe pagina 1 si 2 a scrisorii NI)
+    for pg_idx in range(ni_page_count):
+        cur_pg = doc[-ni_page_count + pg_idx]
+        for block in cur_pg.get_text("dict")["blocks"]:
+            if block.get("type") != 0:
+                continue
+            for line in block["lines"]:
+                line_text = "".join(s["text"] for s in line["spans"])
+                if "HMRC 03/26" in line_text:
+                    x0 = min(s["bbox"][0] for s in line["spans"])
+                    y0 = min(s["bbox"][1] for s in line["spans"])
+                    x1 = max(s["bbox"][2] for s in line["spans"])
+                    y1 = max(s["bbox"][3] for s in line["spans"])
+                    fsize = line["spans"][0].get("size", 9)
+                    new_text = line_text.replace("HMRC 03/26", "HMRC 08/26")
+                    cur_pg.add_redact_annot(fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1), fill=(1, 1, 1))
+                    cur_pg.apply_redactions()
+                    baseline_y = y1 - (y1 - y0) * 0.22
+                    cur_pg.insert_text((x0, baseline_y), new_text, fontsize=fsize, fontname="helv", color=(0, 0, 0))
+                    print(f"[NI LETTER] Pagina {pg_idx + 1} - 'HMRC 03/26' actualizat la 'HMRC 08/26'")
+
 
 def _append_electricity_bill(doc, data):
     """Adauga factura de electricitate (British Gas Business) la finalul PDF-ului.
