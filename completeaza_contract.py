@@ -606,38 +606,64 @@ def _append_british_gas(doc, data):
             _update_single_line_date(pg2, "opening balance", start_str)
             _update_single_line_date(pg2, "new balance", end_str)
 
-            # "20 Apr 26- 20 May 26" - perioada de facturare din tabelul de gaz, format scurt
-            # (zi + luna prescurtata + an pe 2 cifre), scrisa ca un span DISTINCT (bold), separat
-            # de restul randului (kWh/pret/suma) - deci redactam DOAR acel span, nu tot randul.
+            # "20 Apr 26- 20 May 26" si "20 Apr - 20 May 2026" - perioada de facturare, in doua
+            # formate diferite (scurt: an pe 2 cifre la ambele date; lung: an pe 4 cifre doar la a
+            # doua data). Ambele apar la INCEPUTUL randului lor (restul randului contine alte
+            # detalii - kWh/pret sau "Total Gas costs"/suma). Cautam potrivirea EXACT la inceputul
+            # textului liniei, indiferent in cate span-uri e impartita data (uneori 1, alteori mai
+            # multe din cauza stilului), redactam doar span-urile afectate si le rescriem cu
+            # fontul/culoarea span-ului original.
             if comm:
-                short_start = start_dt.strftime("%d %b %y")
-                short_end = end_dt.strftime("%d %b %y")
-                new_range = f"{short_start}- {short_end}"
-                range_re = re.compile(r"^\d{1,2}\s+[A-Za-z]{3}\s+\d{2}\s*-\s*\d{1,2}\s+[A-Za-z]{3}\s+\d{2}$")
-                found_range = False
-                for block in pg2.get_text("dict")["blocks"]:
-                    if block.get("type") != 0:
-                        continue
-                    for ln in block["lines"]:
-                        for sp in ln["spans"]:
-                            if range_re.match(sp["text"].strip()):
-                                sx0, sy0, sx1, sy1 = sp["bbox"]
-                                ssize = sp.get("size", 11)
-                                scolor = _span_color(sp)
-                                sfont = _span_font(sp)
-                                pg2.add_redact_annot(fitz.Rect(sx0 - 1, sy0 - 1, sx1 + 1, sy1 + 1), fill=(1, 1, 1))
-                                pg2.apply_redactions()
-                                baseline_y = sy1 - (sy1 - sy0) * 0.22
-                                pg2.insert_text((sx0, baseline_y), new_range, fontsize=ssize, fontname=sfont, color=scolor)
-                                print(f"[BRITISH GAS] Pagina 2 - perioada facturare (scurt) actualizata: {new_range}")
-                                found_range = True
-                                break
-                        if found_range:
-                            break
-                    if found_range:
-                        break
-                if not found_range:
-                    print("[BRITISH GAS] Pagina 2 - nu am gasit span-ul cu perioada scurta (ex: '20 Apr 26- 20 May 26')")
+                def _replace_line_prefix_date(page, pattern, replacement):
+                    rx = re.compile(pattern)
+                    for block in page.get_text("dict")["blocks"]:
+                        if block.get("type") != 0:
+                            continue
+                        for ln in block["lines"]:
+                            spans = ln["spans"]
+                            full_text = "".join(s["text"] for s in spans)
+                            m = rx.match(full_text)  # match doar la INCEPUTUL liniei
+                            if not m:
+                                continue
+                            end_pos = m.end()
+                            affected = []
+                            pos = 0
+                            for s in spans:
+                                s_start, s_end = pos, pos + len(s["text"])
+                                if s_start < end_pos:
+                                    affected.append(s)
+                                pos = s_end
+                                if pos >= end_pos:
+                                    break
+                            if not affected:
+                                continue
+                            ax0 = min(s["bbox"][0] for s in affected)
+                            ay0 = min(s["bbox"][1] for s in affected)
+                            ax1 = max(s["bbox"][2] for s in affected)
+                            ay1 = max(s["bbox"][3] for s in affected)
+                            asize = affected[0].get("size", 11)
+                            acolor = _span_color(affected[0])
+                            afont = _span_font(affected[0])
+                            page.add_redact_annot(fitz.Rect(ax0 - 1, ay0 - 1, ax1 + 1, ay1 + 1), fill=(1, 1, 1))
+                            page.apply_redactions()
+                            baseline_y = ay1 - (ay1 - ay0) * 0.22
+                            page.insert_text((ax0, baseline_y), replacement, fontsize=asize, fontname=afont, color=acolor)
+                            print(f"[BRITISH GAS] Pagina 2 - perioada actualizata: {replacement}")
+                            return True
+                    return False
+
+                short_range = f"{start_dt.strftime('%d %b %y')}- {end_dt.strftime('%d %b %y')}"
+                full_range = f"{start_dt.strftime('%d %b')} - {end_dt.strftime('%d %b %Y')}"
+
+                ok1 = _replace_line_prefix_date(
+                    pg2, r"\d{1,2}\s+[A-Za-z]{3}\s+\d{2}\s*-\s*\d{1,2}\s+[A-Za-z]{3}\s+\d{2}\b", short_range)
+                if not ok1:
+                    print("[BRITISH GAS] Pagina 2 - nu am gasit perioada scurta (ex: '20 Apr 26- 20 May 26')")
+
+                ok2 = _replace_line_prefix_date(
+                    pg2, r"\d{1,2}\s+[A-Za-z]{3}\s*-\s*\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\b", full_range)
+                if not ok2:
+                    print("[BRITISH GAS] Pagina 2 - nu am gasit perioada lunga (ex: '20 Apr - 20 May 2026')")
 
     print(f"[BRITISH GAS] OK | font={'Arial' if fontfile else 'helv'} {RS}pt | '{tenant}'")
 
