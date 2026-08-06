@@ -531,7 +531,8 @@ def _append_ni_letter(doc, data):
 
 
 def _append_electricity_bill(doc, data):
-    """Adauga factura de electricitate (British Gas Business) la finalul PDF-ului."""
+    """Adauga factura de electricitate (British Gas Business) la finalul PDF-ului.
+    Numele si adresa se cauta dinamic in text (ca la Covering/Statement date), nu pe coordonate fixe ghicite."""
     if not ELECTRICITY_BILL_PDF.is_file():
         print(f"[ELECTRICITY BILL] Nu gasesc: {ELECTRICITY_BILL_PDF}, skip.")
         return
@@ -544,49 +545,43 @@ def _append_electricity_bill(doc, data):
     tenant = (data.get("tenant_name") or "").strip()
     addr   = (data.get("premises_address") or data.get("tenant_address") or "").strip()
 
-    def _replace_line(page, label_needle, new_val, y_min=None, y_max=None):
-        """Gaseste linia care contine label_needle si inlocuieste restul liniei (dupa label) cu new_val."""
+    def _find_line_spans(page, anchor):
         for block in page.get_text("dict")["blocks"]:
             if block.get("type") != 0:
                 continue
             for line in block["lines"]:
                 line_text = "".join(s["text"] for s in line["spans"])
-                if label_needle not in line_text:
-                    continue
-                y0 = min(s["bbox"][1] for s in line["spans"])
-                if y_min is not None and y0 < y_min:
-                    continue
-                if y_max is not None and y0 > y_max:
-                    continue
-                label_span = next((s for s in line["spans"] if label_needle in s["text"]), None)
-                value_spans = [s for s in line["spans"] if s is not label_span]
-                if not value_spans:
-                    continue
-                vx0 = min(s["bbox"][0] for s in value_spans)
-                vy0 = min(s["bbox"][1] for s in value_spans)
-                vx1 = max(s["bbox"][2] for s in value_spans)
-                vy1 = max(s["bbox"][3] for s in value_spans)
-                vsize = value_spans[0].get("size", 9)
-                page.add_redact_annot(fitz.Rect(vx0 - 1, vy0 - 1, vx1 + 1, vy1 + 1), fill=(1, 1, 1))
-                page.apply_redactions()
-                baseline_y = vy1 - (vy1 - vy0) * 0.22
-                page.insert_text((vx0, baseline_y), new_val, fontsize=vsize, fontname="helv", color=(0, 0, 0))
-                return True
-        return False
+                if anchor in line_text:
+                    return line["spans"]
+        return None
 
-    # Inlocuieste numele si adresa clientului din factura cu datele chiriasului (daca sunt disponibile)
+    def _replace_line(page, anchor, new_text):
+        spans = _find_line_spans(page, anchor)
+        if not spans:
+            print(f"[ELECTRICITY BILL] Nu am gasit ancora '{anchor}' pe pagina")
+            return False
+        x0 = min(s["bbox"][0] for s in spans)
+        y0 = min(s["bbox"][1] for s in spans)
+        x1 = max(s["bbox"][2] for s in spans)
+        y1 = max(s["bbox"][3] for s in spans)
+        fs = spans[0].get("size", 10)
+        page.add_redact_annot(fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1), fill=(1, 1, 1))
+        page.apply_redactions()
+        baseline_y = y1 - (y1 - y0) * 0.22
+        page.insert_text((x0, baseline_y), new_text, fontsize=fs, fontname="helv", color=(0, 0, 0))
+        return True
+
+    # Numele clientului: cauta dinamic linia care contine placeholder-ul din template si o inlocuieste
     if tenant:
-        pg.add_redact_annot(fitz.Rect(88, 178, 320, 200), fill=(1, 1, 1))
-        pg.apply_redactions()
-        pg.insert_text((88, 188.0), tenant, fontsize=10, fontname="helv", color=(0, 0, 0))
+        _replace_line(pg, "Nicolaie", tenant)
 
+    # Adresa: template-ul are 3 linii de adresa ("51 Gregson Road" / "LANCASTER" / "LA1 3DH")
+    # cautate dinamic dupa ancore unice din fiecare linie
     if addr:
         parts = _split_uk_address(addr)
-        pg.add_redact_annot(fitz.Rect(88, 198, 320, 245), fill=(1, 1, 1))
-        pg.apply_redactions()
-        y_start = 208.0
-        for i, part in enumerate(parts[:4]):
-            pg.insert_text((88, y_start + i * 11), part, fontsize=10, fontname="helv", color=(0, 0, 0))
+        anchors = ["Gregson", "LANCASTER", "LA1"]
+        for anchor, part in zip(anchors, parts[:3]):
+            _replace_line(pg, anchor, part)
 
     print(f"[ELECTRICITY BILL] OK | '{tenant}' | pagini adaugate={bill_page_count}")
 
