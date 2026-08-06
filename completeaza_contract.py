@@ -314,6 +314,135 @@ def _split_uk_address(addr: str) -> list[str]:
     return [addr]
 
 
+def _replace_period_range(pg, start_dt, end_dt):
+    """Cauta pe pagina liniile/span-urile care contin un interval de forma
+    'DD Mon [YY|YYYY] - DD Mon YY|YYYY' (ex: perioada de facturare gaz) si
+    inlocuieste ambele date cu perioada calculata (start_dt -> end_dt),
+    pastrand formatul de cifre al anului (2 sau 4 cifre) si stilul numelui
+    lunii (abreviat sau intreg) exact ca in original, plus separatorul original."""
+    pattern = re.compile(
+        r'(\d{1,2})\s+([A-Za-z]{3,9})\s*(\d{2,4})?\s*(-)\s*'
+        r'(\d{1,2})\s+([A-Za-z]{3,9})\s*(\d{2,4})'
+    )
+    updated = 0
+    for block in pg.get_text("dict")["blocks"]:
+        if block.get("type") != 0:
+            continue
+        for line in block["lines"]:
+            for s in line["spans"]:
+                txt = s["text"]
+                m = pattern.search(txt)
+                if not m:
+                    continue
+                day1, mon1, yr1, sep, day2, mon2, yr2 = m.groups()
+
+                new_day1 = f"{start_dt.day:02d}"
+                new_mon1 = start_dt.strftime("%B") if len(mon1) > 3 else start_dt.strftime("%b")
+                new_yr1  = (start_dt.strftime("%y") if len(yr1) == 2 else start_dt.strftime("%Y")) if yr1 else ""
+                new_day2 = f"{end_dt.day:02d}"
+                new_mon2 = end_dt.strftime("%B") if len(mon2) > 3 else end_dt.strftime("%b")
+                new_yr2  = end_dt.strftime("%y") if len(yr2) == 2 else end_dt.strftime("%Y")
+
+                part1 = f"{new_day1} {new_mon1}" + (f" {new_yr1}" if new_yr1 else "")
+                part2 = f"{new_day2} {new_mon2} {new_yr2}"
+                new_value = f"{part1}{sep} {part2}"
+                new_txt = txt[:m.start()] + new_value + txt[m.end():]
+
+                x0, y0, x1, y1 = s["bbox"]
+                pg.add_redact_annot(fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1), fill=(1, 1, 1))
+                pg.apply_redactions()
+                size = s.get("size", 9)
+                baseline_y = y1 - (y1 - y0) * 0.22
+                pg.insert_text((x0, baseline_y), new_txt, fontsize=size, fontname="helv", color=(0, 0, 0))
+                updated += 1
+                print(f"[BRITISH GAS] Interval perioada actualizat: '{txt}' -> '{new_txt}'")
+    return updated
+
+
+def _replace_wrapped_date(pg, label_substr, new_date_str):
+    """Gaseste eticheta (ex: 'opening balance') si inlocuieste data veche (zi/luna/an)
+    oriunde ar fi ea, chiar daca e impartita pe mai multe linii vizuale din cauza
+    wrap-ului din PDF (ex: linia 1 'Your opening', linia 2 'balance on 01', linia 3
+    'March 2026' - toate 3 pot fi span-uri intregi de linie, nu cuvinte separate).
+    Foloseste regex ca sa inlocuiasca DOAR portiunea de data din interiorul textului
+    fiecarui span, pastrand restul cuvintelor din acel span (ex: 'balance on ') si
+    pozitia/wrap-ul original."""
+    new_tokens = new_date_str.split()  # ex: ["05", "August", "2026"]
+    if len(new_tokens) != 3:
+        print(f"[BRITISH GAS] Format data neasteptat pentru '{label_substr}': '{new_date_str}'")
+        return False
+    new_day, new_month, new_year = new_tokens
+
+    month_re = re.compile(
+        r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b",
+        re.IGNORECASE,
+    )
+    year_re = re.compile(r"\b(19|20)\d{2}\b")
+    day_re = re.compile(r"\b\d{1,2}\b")
+
+    # Colecteaza toate liniile paginii, in ordine (block apoi line)
+    all_lines = []
+    for block in pg.get_text("dict")["blocks"]:
+        if block.get("type") != 0:
+            continue
+        for line in block["lines"]:
+            all_lines.append(line["spans"])
+
+    # Gaseste linia care contine eticheta
+    label_idx = None
+    for i, spans in enumerate(all_lines):
+        line_text = "".join(s["text"] for s in spans).lower()
+        if label_substr.lower() in line_text:
+            label_idx = i
+            break
+    if label_idx is None:
+        print(f"[BRITISH GAS] Nu am gasit eticheta '{label_substr}'")
+        return False
+
+    replaced = {"day": False, "month": False, "year": False}
+    edits = []  # list of (span, new_text)
+
+    # Cauta cele 3 componente incepand de la linia etichetei, in urmatoarele linii (wrap)
+    for spans in all_lines[label_idx: label_idx + 4]:
+        for s in spans:
+            txt = s["text"]
+            new_txt = txt
+            if not replaced["year"] and year_re.search(new_txt):
+                new_txt = year_re.sub(new_year, new_txt, count=1)
+                replaced["year"] = True
+            if not replaced["month"] and month_re.search(new_txt):
+                new_txt = month_re.sub(new_month, new_txt, count=1)
+                replaced["month"] = True
+            if not replaced["day"] and day_re.search(new_txt):
+                candidate = day_re.sub(new_day, new_txt, count=1)
+                if candidate != new_txt:
+                    new_txt = candidate
+                    replaced["day"] = True
+            if new_txt != txt:
+                edits.append((s, new_txt))
+        if all(replaced.values()):
+            break
+
+    if not all(replaced.values()):
+        missing = [k for k, v in replaced.items() if not v]
+        print(f"[BRITISH GAS] Nu am gasit toate componentele datei pentru '{label_substr}' (lipsesc: {missing})")
+        return False
+
+    for s, _ in edits:
+        x0, y0, x1, y1 = s["bbox"]
+        pg.add_redact_annot(fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1), fill=(1, 1, 1))
+    pg.apply_redactions()
+
+    for s, new_txt in edits:
+        x0, y0, x1, y1 = s["bbox"]
+        size = s.get("size", 9)
+        baseline_y = y1 - (y1 - y0) * 0.22
+        pg.insert_text((x0, baseline_y), new_txt, fontsize=size, fontname="helv", color=(0, 0, 0))
+
+    print(f"[BRITISH GAS] '{label_substr}' actualizat -> {new_date_str}")
+    return True
+
+
 def _append_british_gas(doc, data):
     """Adauga British Gas statement PDF la finalul documentului si inlocuieste datele chiriasului."""
     if not BRITISH_GAS_PDF.is_file():
@@ -446,6 +575,19 @@ def _append_british_gas(doc, data):
                     print("[BRITISH GAS] Statement date: gasit label dar nu si valoarea de inlocuit")
             else:
                 print("[BRITISH GAS] Nu am gasit linia 'Statement date:' pe pagina statement-ului")
+
+            # "Your opening balance on <data>" - sincronizat cu aceeasi data de sfarsit (end_str)
+            # Textul e impartit pe cuvinte/wrap in PDF, deci se inlocuieste token cu token.
+            # Rulam pe TOATE paginile statement-ului (nu doar prima), pentru ca acest
+            # camp + "new balance" + intervalele de perioada se pot repeta pe o pagina
+            # ulterioara (ex: "Your account in detail").
+            for i in range(bg_page_count):
+                bg_pg = doc[-bg_page_count + i]
+                _replace_wrapped_date(bg_pg, "opening balance", end_str)
+                _replace_wrapped_date(bg_pg, "new balance", end_str)
+                n_ranges = _replace_period_range(bg_pg, start_dt, end_dt)
+                if n_ranges:
+                    print(f"[BRITISH GAS] {n_ranges} interval(e) de perioada actualizate pe pagina {i+1}/{bg_page_count} a statement-ului")
 
     print(f"[BRITISH GAS] OK | font={'Arial' if fontfile else 'helv'} {RS}pt | '{tenant}'")
 
