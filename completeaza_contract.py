@@ -1064,7 +1064,7 @@ def fill_contract(data: dict) -> bytes:
         _append_receipt(doc, data)
         _append_british_gas(doc, data)
         _append_ni_letter(doc, data)
-        _append_electricity_bill(doc, data)
+        # _append_electricity_bill(doc, data)  # DEZACTIVAT - paginile 18-19 (electricity bill) scoase din PDF-ul final, la cerere
         _insert_payment_lines(doc, data, _rent_y_info)
         # Salvam in memorie si reincarcare — altfel get_text nu vede textul nou inserat
         _tmp_bytes = doc.tobytes()
