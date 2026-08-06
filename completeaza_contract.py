@@ -515,12 +515,30 @@ def _append_british_gas(doc, data):
 
             day_line = None
             month_line = None
+            full_date_line = None
             for ln in target_lines:
-                ltxt = "".join(s["text"] for s in ln["spans"])
-                if re.search(r"\bon\s+\d{1,2}\b\s*$", ltxt.strip(), re.IGNORECASE):
+                ltxt = "".join(s["text"] for s in ln["spans"]).strip()
+                if re.fullmatch(r"\d{1,2}\s+[A-Za-z]+\s+\d{4}", ltxt):
+                    # cazul "25 March 2026" - ziua+luna+anul pe acelasi rand
+                    full_date_line = ln
+                elif re.search(r"\bon\s+\d{1,2}\b\s*$", ltxt, re.IGNORECASE):
                     day_line = ln
-                elif re.fullmatch(r"[A-Za-z]+\s+\d{4}", ltxt.strip()):
+                elif re.fullmatch(r"[A-Za-z]+\s+\d{4}", ltxt):
                     month_line = ln
+
+            if full_date_line:
+                f_span = full_date_line["spans"][0]
+                fx0, fy0, fx1, fy1 = f_span["bbox"]
+                fsize = f_span.get("size", 12)
+                fcolor = _span_color(f_span)
+                ffont = _span_font(f_span)
+                pg.add_redact_annot(fitz.Rect(fx0 - 1, fy0 - 1, fx1 + 1, fy1 + 1), fill=(1, 1, 1))
+                pg.apply_redactions()
+                baseline_y = fy1 - (fy1 - fy0) * 0.22
+                pg.insert_text((fx0, baseline_y), f"{new_day} {new_month} {new_year}",
+                                fontsize=fsize, fontname=ffont, color=fcolor)
+                print(f"[BRITISH GAS] {label} balance - data actualizata: {new_day} {new_month} {new_year}")
+                return
 
             if day_line:
                 d_span = day_line["spans"][-1]
