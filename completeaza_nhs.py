@@ -94,9 +94,8 @@ def fill_nhs_letter(data: dict) -> bytes:
     # / Cod postal. Uneori formularul trimite bucati suplimentare (ex: un rand separat de comitat,
     # "Cheshire") - fie ca un al 5-lea camp, fie "ascuns" ca "\n" in interiorul unuia din
     # gp_addr1/2/3 (insert_text respecta \n si deseneaza un rand in plus, stricand alinierea).
-    # Le "aplatizam" pe toate intr-o singura lista, apoi le comprimam la exact 4 randuri, lipind
-    # orice bucata in plus (ex: comitatul) de randul cu orasul - nu se pierde nimic, dar nu mai
-    # apare un rand suplimentar care sa strice formatul din template.
+    # Le "aplatizam" pe toate intr-o singura lista si le afisam pe randuri separate (Nume /
+    # Strada / Oras / Comitat / Cod postal) - pana la 5 randuri in total, fara sa lipim nimic.
     def _flatten_addr(*fields):
         out = []
         for f in fields:
@@ -110,22 +109,14 @@ def fill_nhs_letter(data: dict) -> bytes:
     gp_addr_parts = _flatten_addr(
         data.get("gp_addr1"), data.get("gp_addr2"), data.get("gp_addr3"), data.get("gp_addr4"))
 
-    if len(gp_addr_parts) > 3:
-        # pastram prima bucata (strada) si ultima (cod postal) neschimbate, iar tot ce e la
-        # mijloc (oras + eventual comitat) se lipeste pe UN singur rand
-        street = gp_addr_parts[0]
-        postcode = gp_addr_parts[-1]
-        town = " ".join(gp_addr_parts[1:-1])
-        gp_addr_parts = [street, town, postcode]
-
     gp_lines = ([gp_name] if gp_name else []) + gp_addr_parts
 
-    _redact(page, 302, 178, 562, 248)
-    # Spatiere stransa intre randuri (13pt), plus un pic mai mult spatiu sub eticheta "Your GP
-    # practice or Doctor's name is:" (blocul incepe la 194.8 in loc de 189.8, impins usor in jos).
-    y_gp = [194.8, 207.8, 220.8, 233.8]
-    sizes = [11.25, 12.0, 12.0, 12.0]
-    for i, line in enumerate(gp_lines[:4]):
+    _redact(page, 302, 178, 562, 254)
+    # Spatiere stransa intre randuri (13pt), impinsa usor in jos sub eticheta "Your GP practice
+    # or Doctor's name is:". Pana la 5 randuri (Nume/Strada/Oras/Comitat/Cod postal).
+    y_gp = [194.8, 207.8, 220.8, 233.8, 246.8]
+    sizes = [11.25, 12.0, 12.0, 12.0, 12.0]
+    for i, line in enumerate(gp_lines[:5]):
         wb(308.0, y_gp[i], line, sizes[i])
 
     # 3. RECEPTIE
