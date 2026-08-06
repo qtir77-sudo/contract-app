@@ -64,6 +64,16 @@
       color: #1f2933;
       border-bottom-color: #fff;
     }
+    .tab-btn.social {
+      background: #111;
+      color: #aaa;
+      border-bottom-color: transparent;
+    }
+    .tab-btn.social.active {
+      background: #7b2d8e;
+      color: #fff;
+      border-bottom-color: #fff;
+    }
     .tab-btn:hover:not(.active) {
       background: #222;
       color: #fff;
@@ -170,6 +180,54 @@
     #panel-nhs .note { background: #fff5f5; border-left: 4px solid #c0392b; padding: 12px 16px; font-size: 13px; color: #6b0000; margin-bottom: 20px; border-radius: 0 4px 4px 0; }
     @media (max-width: 600px) { #panel-nhs .grid-2, #panel-nhs .grid-3 { grid-template-columns: 1fr; } #panel-nhs .col-span-2 { grid-column: span 1; } }
 
+    /* ══════════════════════════════════════════
+       SOCIAL SERVICE STYLES (reutilizeaza clase din panel-nhs, culoare mov)
+    ══════════════════════════════════════════ */
+    #panel-social {
+      --soc-purple: #7b2d8e;
+      --soc-purple-dark: #5c2169;
+      --radius: 4px;
+      --shadow: 0 2px 12px rgba(123,45,142,0.12);
+      font-family: 'Fira Sans', sans-serif;
+    }
+    #panel-social .topbar { background: #7b2d8e; padding: 0; display: flex; align-items: stretch; }
+    #panel-social .topbar-inner { max-width: 900px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 16px; padding: 14px 24px; }
+    #panel-social .soc-logo { background: #fff; color: #7b2d8e; font-family: 'Fira Mono', monospace; font-weight: 700; font-size: 20px; padding: 4px 10px; letter-spacing: -1px; border-radius: 2px; flex-shrink: 0; }
+    #panel-social .topbar-title { color: #fff; font-size: 18px; font-weight: 600; letter-spacing: 0.01em; }
+    #panel-social .topbar-version { margin-left: auto; background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); font-family: 'Fira Mono', monospace; font-size: 11px; padding: 3px 8px; border-radius: 2px; }
+    #panel-social .page { max-width: 900px; margin: 0 auto; padding: 32px 24px 60px; }
+    #panel-social .card { background: #fff; border-radius: var(--radius,4px); box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; border-left: 4px solid #7b2d8e; }
+    #panel-social .card-header { background: #7b2d8e; padding: 12px 20px; display: flex; align-items: center; gap: 10px; }
+    #panel-social .card-header h2 { color: #fff; font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+    #panel-social .card-icon { width: 22px; height: 22px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    #panel-social .card-body { padding: 20px 24px; }
+    #panel-social .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    #panel-social .col-span-2 { grid-column: span 2; }
+    #panel-social .field { display: flex; flex-direction: column; gap: 5px; }
+    #panel-social label { font-size: 12px; font-weight: 600; color: #4a5568; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 0; }
+    #panel-social input { height: 40px; border: 1.5px solid #d0d9e2; border-radius: 4px; padding: 0 12px; font-family: 'Fira Sans', sans-serif; font-size: 14px; color: #1a1a2e; background: #fafcff; transition: border-color 0.15s, box-shadow 0.15s; outline: none; width: 100%; margin-bottom: 0; }
+    #panel-social input:focus { border-color: #7b2d8e; box-shadow: 0 0 0 3px rgba(123,45,142,0.15); background: #fff; }
+    #panel-social input::placeholder { color: #b0bec5; font-style: italic; }
+    #panel-social .action-bar { display: flex; align-items: center; gap: 16px; margin-top: 28px; }
+    #panel-social .btn-generate { background: #7b2d8e; color: white; border: none; height: 48px; padding: 0 36px; border-radius: 4px; font-family: 'Fira Sans', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.1s; letter-spacing: 0.02em; width: auto; }
+    #panel-social .btn-generate:hover { background: #5c2169; }
+    #panel-social .btn-generate:active { transform: scale(0.98); }
+    #panel-social .btn-generate:disabled { background: #c9a7d3; cursor: not-allowed; }
+    #panel-social .btn-reset { background: transparent; color: #4a5568; border: 1.5px solid #d0d9e2; height: 48px; padding: 0 20px; border-radius: 4px; font-family: 'Fira Sans', sans-serif; font-size: 14px; cursor: pointer; transition: all 0.15s; width: auto; }
+    #panel-social .btn-reset:hover { border-color: #7b2d8e; color: #7b2d8e; }
+    #panel-social .btn-add-child { background: #f0e4f5; color: #7b2d8e; border: 1.5px dashed #c9a7d3; border-radius: 4px; padding: 10px 16px; font-family: 'Fira Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
+    #panel-social .btn-add-child:hover { background: #e5d0ec; }
+    #panel-social .btn-remove-child { background: #fdecea; color: #c0392b; border: 1px solid #f5c6c2; border-radius: 4px; height: 40px; width: 40px; flex-shrink: 0; cursor: pointer; font-size: 16px; }
+    #panel-social .btn-remove-child:hover { background: #f5c6c2; }
+    #panel-social .child-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #eee; }
+    #panel-social .child-row .field { flex: 1; }
+    #panel-social .status { display: block; text-align: center; margin-top: 0.75rem; font-size: 0.9rem; color: #4a5568; }
+    #panel-social .status.ok { color: #7b2d8e; font-weight: 600; }
+    #panel-social .status.err { color: #b42318; font-weight: 600; }
+    #panel-social .spinner { display: inline-block; width: 14px; height: 14px; border: 2.5px solid rgba(123,45,142,0.25); border-top-color: #7b2d8e; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    #panel-social .note { background: #f6effa; border-left: 4px solid #7b2d8e; padding: 12px 16px; font-size: 13px; color: #4b1a58; margin-bottom: 20px; border-radius: 0 4px 4px 0; }
+    @media (max-width: 600px) { #panel-social .grid-2 { grid-template-columns: 1fr; } #panel-social .col-span-2 { grid-column: span 1; } }
+
     /* ── PASSWORD OVERLAY ── */
     #passwordOverlay { display:flex; position:fixed; inset:0; z-index:9999; background:#f4f6f8; align-items:center; justify-content:center; }
   </style>
@@ -200,6 +258,10 @@
   <div class="tab-wrap">
     <button class="tab-btn nhs" id="tabbtn-nhs" onclick="switchTab('nhs')">🏥 NHS GP Letter</button>
     <input type="color" class="tab-color-picker" id="color-nhs" value="#c0392b" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('nhs', this.value)">
+  </div>
+  <div class="tab-wrap">
+    <button class="tab-btn social" id="tabbtn-social" onclick="switchTab('social')">👪 Social Service</button>
+    <input type="color" class="tab-color-picker" id="color-social" value="#7b2d8e" title="Alege culoarea acestui tab" onclick="event.stopPropagation()" onchange="setTabColor('social', this.value)">
   </div>
 </div>
 
@@ -3756,6 +3818,209 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </div>
 
+<!-- SOCIAL SERVICE PANEL -->
+<div id="panel-social" class="tab-panel">
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="soc-logo">DCC</div>
+    <div class="topbar-title">Social Service Care Letter Generator</div>
+    <div class="topbar-version">v1.0</div>
+  </div>
+</div>
+
+<div class="page">
+
+  <div class="note">
+    ℹ️ Completează câmpurile de mai jos și apasă <strong>Generate PDF</strong>. Poți adăuga oricâți copii ai nevoie cu butonul de mai jos.
+  </div>
+
+  <!-- Carer details -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">👤</div>
+      <h2>Carer Details</h2>
+    </div>
+    <div class="card-body">
+      <div class="grid-2" style="gap:16px">
+        <div class="field">
+          <label>Carer Full Name</label>
+          <input id="soc_carer_name" placeholder="e.g. Mr Daniel-Stefan Tudor" />
+        </div>
+        <div class="field">
+          <label>Carer Date of Birth</label>
+          <input id="soc_carer_dob" placeholder="e.g. 17 July 1992" />
+        </div>
+        <div class="field col-span-2">
+          <label>Address (children reside here)</label>
+          <input id="soc_address" placeholder="e.g. 14 Jackson Road, MATLOCK, DE4 3JQ." />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Children -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">👪</div>
+      <h2>Children</h2>
+    </div>
+    <div class="card-body">
+      <div id="soc_children_list"></div>
+      <button type="button" class="btn-add-child" onclick="socAddChild()">＋ Adaugă copil</button>
+    </div>
+  </div>
+
+  <!-- Letter details -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📅</div>
+      <h2>Letter Details</h2>
+    </div>
+    <div class="card-body">
+      <div class="grid-2" style="gap:16px">
+        <div class="field">
+          <label>Letter Date</label>
+          <input id="soc_letter_date" placeholder="e.g. 18 May 2026" />
+        </div>
+        <div class="field">
+          <label>Social Worker Name</label>
+          <input id="soc_worker_name" placeholder="e.g. Sarah Williams" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-bar">
+    <button class="btn-generate" id="soc_btnGen" onclick="socGenerate()">⬇ Generate PDF</button>
+    <button class="btn-reset" onclick="socResetForm()">Reset fields</button>
+  </div>
+
+  <div class="status" id="soc_status"></div>
+
+</div>
+
+<script>
+let socChildCount = 0;
+
+function socAddChild(name, dob) {
+  socChildCount++;
+  const id = socChildCount;
+  const row = document.createElement('div');
+  row.className = 'child-row';
+  row.id = 'soc_child_row_' + id;
+  row.innerHTML =
+    '<div class="field"><label>Full Name</label>' +
+    '<input id="soc_child_name_' + id + '" placeholder="e.g. Miss Gabriela Tudor" value="' + (name ? name.replace(/"/g,'&quot;') : '') + '" /></div>' +
+    '<div class="field"><label>Date of Birth</label>' +
+    '<input id="soc_child_dob_' + id + '" placeholder="e.g. 20 October 2016" value="' + (dob ? dob.replace(/"/g,'&quot;') : '') + '" /></div>' +
+    '<button type="button" class="btn-remove-child" onclick="socRemoveChild(' + id + ')" title="Șterge copil">✕</button>';
+  document.getElementById('soc_children_list').appendChild(row);
+}
+
+function socRemoveChild(id) {
+  const row = document.getElementById('soc_child_row_' + id);
+  if (row) row.remove();
+}
+
+function socVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function socSetStatus(type, msg) {
+  const el = document.getElementById('soc_status');
+  el.className = 'status ' + type;
+  if (type === 'loading') {
+    el.innerHTML = '<span class="spinner"></span><span>' + msg + '</span>';
+  } else if (type === 'success') {
+    el.innerHTML = '✅ ' + msg;
+  } else {
+    el.innerHTML = '❌ ' + msg;
+  }
+}
+
+function socCollectChildren() {
+  const rows = document.querySelectorAll('#soc_children_list .child-row');
+  const children = [];
+  rows.forEach(row => {
+    const id = row.id.replace('soc_child_row_', '');
+    const name = socVal('soc_child_name_' + id);
+    const dob = socVal('soc_child_dob_' + id);
+    if (name) children.push({ name: name, dob: dob });
+  });
+  return children;
+}
+
+async function socGenerate() {
+  const btn = document.getElementById('soc_btnGen');
+  btn.disabled = true;
+  socSetStatus('loading', 'Generez PDF-ul...');
+
+  const data = {
+    carer_name:  socVal('soc_carer_name'),
+    carer_dob:   socVal('soc_carer_dob'),
+    address:     socVal('soc_address'),
+    letter_date: socVal('soc_letter_date'),
+    worker_name: socVal('soc_worker_name'),
+    children:    socCollectChildren(),
+  };
+
+  try {
+    const resp = await fetch('/generate-social', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(err || 'Server error ' + resp.status);
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'social-service-letter.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    socSetStatus('success', 'PDF generat cu succes! Descărcarea a început.');
+  } catch (e) {
+    socSetStatus('error', 'Eroare: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function socResetForm() {
+  ['soc_carer_name','soc_carer_dob','soc_address','soc_letter_date','soc_worker_name'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('soc_children_list').innerHTML = '';
+  socChildCount = 0;
+  socAddChild();
+  const el = document.getElementById('soc_status');
+  el.className = 'status';
+}
+
+// Prefill cu exemplul din document
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('soc_carer_name').value  = 'Mr Daniel-Stefan Tudor';
+  document.getElementById('soc_carer_dob').value   = '17 July 1992';
+  document.getElementById('soc_address').value     = '14 Jackson Road, MATLOCK, DE4 3JQ.';
+  document.getElementById('soc_letter_date').value = '18 May 2026';
+  document.getElementById('soc_worker_name').value = 'Sarah Williams';
+  socAddChild('Miss Gabriela Tudor', '20 October 2016');
+  socAddChild('Mr Adrian Tudor', '11 May 2015');
+  socAddChild('Mr Ricardo Tudor', '5 January 2014');
+  socAddChild('Mr Marius Tudor', '19 March 2013');
+});
+</script>
+</div>
+
 
 <script>
   // ── PASSWORD ──────────────────────────────────────────────
@@ -3789,7 +4054,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── CULOARE PER TAB (selectabilă, salvată local) ────────────
-  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', programari: '#f1c40f', complete: '#27ae60', neverificate: '#e67e22', repayment: '#6c5ce7', carduri: '#0d9488' };
+  const DEFAULT_TAB_COLORS = { contract: '#1a5f4a', nhs: '#c0392b', social: '#7b2d8e', programari: '#f1c40f', complete: '#27ae60', neverificate: '#e67e22', repayment: '#6c5ce7', carduri: '#0d9488' };
 
   function getTabColors() {
     try {
