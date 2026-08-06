@@ -572,6 +572,38 @@ def _append_british_gas(doc, data):
         _update_wrapped_balance_date("opening", must_include=["opening", "balance"], must_exclude=["new"], date_str=start_str)
         _update_wrapped_balance_date("new", must_include=["new", "balance"], must_exclude=["opening"], date_str=end_str)
 
+        # Pagina 2 a statement-ului ("Your account in detail") are acelasi tip de text dar
+        # scris pe UN SINGUR rand si in negru (nu albastru, nu impartit pe mai multe randuri):
+        # "Your new balance on 20 April 2026". O actualizam separat, pe pagina 2, daca exista.
+        if bg_page_count > 1 and end_str:
+            pg2 = doc[-bg_page_count + 1]
+            found = False
+            for block in pg2.get_text("dict")["blocks"]:
+                if block.get("type") != 0:
+                    continue
+                for ln in block["lines"]:
+                    ltxt = "".join(s["text"] for s in ln["spans"])
+                    if "new balance" in ltxt.lower() and re.search(r"\d{1,2}\s+[A-Za-z]+\s+\d{4}", ltxt):
+                        lx0 = min(s["bbox"][0] for s in ln["spans"])
+                        ly0 = min(s["bbox"][1] for s in ln["spans"])
+                        lx1 = max(s["bbox"][2] for s in ln["spans"])
+                        ly1 = max(s["bbox"][3] for s in ln["spans"])
+                        lsize = ln["spans"][0].get("size", 11)
+                        lcolor = _span_color(ln["spans"][0])
+                        lfont = _span_font(ln["spans"][0])
+                        new_line_text = re.sub(r"\d{1,2}\s+[A-Za-z]+\s+\d{4}", end_str, ltxt)
+                        pg2.add_redact_annot(fitz.Rect(lx0 - 1, ly0 - 1, lx1 + 1, ly1 + 1), fill=(1, 1, 1))
+                        pg2.apply_redactions()
+                        baseline_y = ly1 - (ly1 - ly0) * 0.22
+                        pg2.insert_text((lx0, baseline_y), new_line_text, fontsize=lsize, fontname=lfont, color=lcolor)
+                        print(f"[BRITISH GAS] Pagina 2 - 'Your new balance on' actualizata: {new_line_text}")
+                        found = True
+                        break
+                if found:
+                    break
+            if not found:
+                print("[BRITISH GAS] Pagina 2 - nu am gasit 'Your new balance on ...'")
+
     print(f"[BRITISH GAS] OK | font={'Arial' if fontfile else 'helv'} {RS}pt | '{tenant}'")
 
 
