@@ -364,6 +364,55 @@ def _append_british_gas(doc, data):
         for i, part in enumerate(parts[:4]):
             ins(52.852, y_origins[i], part)
 
+    # Calculeaza automat "Covering: <data> to <data + 1 luna>" pe baza commencement_date
+    # (aceeasi data folosita la "Date:" din Rent Receipt)
+    comm = (data.get("commencement_date") or "").strip()
+    if comm:
+        try:
+            from datetime import datetime
+            from dateutil.relativedelta import relativedelta
+            start_dt = datetime.strptime(comm, "%d/%m/%Y")
+            end_dt = start_dt + relativedelta(months=1)
+            start_str = start_dt.strftime("%d %B %Y")
+            end_str = end_dt.strftime("%d %B %Y")
+        except Exception as e:
+            print(f"[BRITISH GAS] EROARE parsare commencement_date '{comm}': {e}")
+            start_str = end_str = None
+
+        if start_str and end_str:
+            # Gaseste linia care contine "Covering:" pe pagina British Gas
+            covering_spans = None
+            for block in pg.get_text("dict")["blocks"]:
+                if block.get("type") != 0:
+                    continue
+                for line in block["lines"]:
+                    line_text = "".join(s["text"] for s in line["spans"])
+                    if "Covering" in line_text:
+                        covering_spans = line["spans"]
+                        break
+                if covering_spans:
+                    break
+
+            if covering_spans:
+                label_span = next((s for s in covering_spans if "Covering" in s["text"]), None)
+                value_spans = [s for s in covering_spans if s is not label_span]
+                if value_spans:
+                    vx0 = min(s["bbox"][0] for s in value_spans)
+                    vy0 = min(s["bbox"][1] for s in value_spans)
+                    vx1 = max(s["bbox"][2] for s in value_spans)
+                    vy1 = max(s["bbox"][3] for s in value_spans)
+                    vsize = value_spans[0].get("size", 9)
+                    pg.add_redact_annot(fitz.Rect(vx0 - 1, vy0 - 1, vx1 + 1, vy1 + 1), fill=(1, 1, 1))
+                    pg.apply_redactions()
+                    baseline_y = vy1 - (vy1 - vy0) * 0.22
+                    pg.insert_text((vx0, baseline_y), f"{start_str} to {end_str}",
+                                    fontsize=vsize, fontname="helv", color=(0, 0, 0))
+                    print(f"[BRITISH GAS] Covering actualizat: {start_str} to {end_str}")
+                else:
+                    print("[BRITISH GAS] Covering: gasit label dar nu si valoarea de inlocuit")
+            else:
+                print("[BRITISH GAS] Nu am gasit linia 'Covering:' pe pagina statement-ului")
+
     print(f"[BRITISH GAS] OK | font={'Arial' if fontfile else 'helv'} {RS}pt | '{tenant}'")
 
 
