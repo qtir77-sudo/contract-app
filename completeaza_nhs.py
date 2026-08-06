@@ -121,7 +121,9 @@ def fill_nhs_letter(data: dict) -> bytes:
     gp_lines = ([gp_name] if gp_name else []) + gp_addr_parts
 
     _redact(page, 302, 178, 562, 248)
-    y_gp = [189.8, 207.3, 225.3, 239.8]
+    # Spatiere stransa intre randuri (13pt), la fel ca la blocul cu numele/adresa pacientului -
+    # inainte erau gap-uri inegale si prea mari (17.5/18/14.5pt), acum randurile sunt apropiate.
+    y_gp = [189.8, 202.8, 215.8, 228.8]
     sizes = [11.25, 12.0, 12.0, 12.0]
     for i, line in enumerate(gp_lines[:4]):
         wb(308.0, y_gp[i], line, sizes[i])
