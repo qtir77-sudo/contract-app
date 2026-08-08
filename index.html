@@ -4404,5 +4404,41 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 </script>
 
+<!-- ═══════════════════════════════════════════════════════
+     MUZICA DE FUNDAL — porneste automat la accesarea site-ului.
+     Pune fisierul mp3 (redenumit "muzica.mp3") in ACELASI FOLDER cu index.html.
+     ═══════════════════════════════════════════════════════ -->
+<audio id="bgMusic" src="muzica.mp3" loop preload="auto"></audio>
+<script>
+(function() {
+  const bg = document.getElementById("bgMusic");
+  if (!bg) return;
+
+  function tryPlay() {
+    const p = bg.play();
+    if (p && p.catch) {
+      p.catch(function() {
+        // Browserul a blocat autoplay cu sunet — pornim la prima interactie a userului.
+        var startOnInteract = function() {
+          bg.play().catch(function(){});
+          window.removeEventListener("click", startOnInteract);
+          window.removeEventListener("keydown", startOnInteract);
+          window.removeEventListener("touchstart", startOnInteract);
+        };
+        window.addEventListener("click", startOnInteract, { once: true });
+        window.addEventListener("keydown", startOnInteract, { once: true });
+        window.addEventListener("touchstart", startOnInteract, { once: true });
+      });
+    }
+  }
+
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    tryPlay();
+  } else {
+    document.addEventListener("DOMContentLoaded", tryPlay);
+  }
+})();
+</script>
+
 </body>
 </html>
