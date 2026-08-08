@@ -108,6 +108,7 @@ class Handler(BaseHTTPRequestHandler):
             ".js": "application/javascript",
             ".png": "image/png",
             ".ttf": "font/ttf",
+            ".mp3": "audio/mpeg",
         }
         body = fp.read_bytes()
         self.send_response(200)
